@@ -4,33 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build",
-    "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "bun test",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
-    "@tailwindcss/postcss": "latest",
     "drizzle-orm": "latest",
-    "lucide-react": "latest",
-    "next": "latest",
-    "postgres": "latest",
-    "react": "latest",
-    "react-dom": "latest",
-    "zod": "latest"
+    "postgres": "latest"
   },
   "devDependencies": {
     "@types/bun": "latest",
     "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
     "drizzle-kit": "latest",
-    "tailwindcss": "latest",
     "typescript": "latest"
   }
 }
-

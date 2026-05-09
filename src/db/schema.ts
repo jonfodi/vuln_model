@@ -108,6 +108,7 @@ export const vulnerabilityRecords = pgTable(
   }),
 );
 
+// same vulnerability can be referenced by multiple sources 
 export const identifiers = pgTable(
   "identifiers",
   {
@@ -122,6 +123,7 @@ export const identifiers = pgTable(
   }),
 );
 
+// join table 
 export const vulnerabilityIdentifiers = pgTable(
   "vulnerability_identifiers",
   {
@@ -327,8 +329,8 @@ export const affectedProducts = pgTable(
   }),
 );
 
-export const references = pgTable(
-  "references",
+export const externalReferences = pgTable(
+  "external_references",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     url: text("url").notNull(),
@@ -337,7 +339,7 @@ export const references = pgTable(
     ...timestamps,
   },
   (table) => ({
-    urlIdx: uniqueIndex("references_url_idx").on(table.url),
+    urlIdx: uniqueIndex("external_references_url_idx").on(table.url),
   }),
 );
 
@@ -349,7 +351,7 @@ export const vulnerabilityRecordReferences = pgTable(
       .references(() => vulnerabilityRecords.id, { onDelete: "cascade" }),
     referenceId: uuid("reference_id")
       .notNull()
-      .references(() => references.id, { onDelete: "cascade" }),
+      .references(() => externalReferences.id, { onDelete: "cascade" }),
     relationship: text("relationship").notNull().default("references"),
     ...timestamps,
   },
@@ -359,4 +361,3 @@ export const vulnerabilityRecordReferences = pgTable(
     }),
   }),
 );
-
