@@ -1,518 +1,417 @@
-# Global Vulnerability Intelligence Graph
+# Vulnerability Intelligence Product
 
-A model for the global, non-customer-specific layer of a vulnerability platform.
+This product is a search-first vulnerability intelligence system.
 
-This layer does not know about a customer's assets, identities, networks,
-owners, tickets, or findings. It models public and vendor-provided security
-knowledge: what vulnerabilities exist, what software they affect, which versions
-are vulnerable, how they are fixed, whether they are exploited, and how reliable
-each claim is.
+Its purpose is to help users understand:
 
-The customer layer can later attach to this graph through package versions,
-container images, SBOM components, scanner findings, or asset inventories.
+> What vulnerabilities matter, what software they affect, how exploitation may
+> work, what harm exploitation can cause, how to fix the issue, and what
+> evidence supports each conclusion.
 
-## Why a global layer
+The first version does not use customer asset data. It focuses on global
+vulnerability knowledge: vulnerabilities, packages, products, frameworks,
+platforms, dependency relationships, exploitation signals, fixes, and evidence.
 
-Customer-specific data answers:
+## Product Thesis
 
-> "Where am I exposed?"
+Most vulnerability tools answer one narrow question:
 
-The global layer answers:
+> Is this package or product affected by a known vulnerability?
 
-> "What is this vulnerability, what does it affect, how is it fixed, and how
-> much should I care before I know where it appears in my environment?"
+That is useful, but incomplete. Security engineers usually need to answer a more
+operational question:
 
-That distinction matters. A vulnerability platform should not need customer data
-to understand that `CVE-2021-44228` affects certain Log4j versions, has public
-exploit activity, maps to a weakness class, has fixed releases, and is present
-in multiple advisory sources.
+> Should I care about this vulnerability, what could an attacker do with it, and
+> what should I do next?
 
-The global graph becomes the shared knowledge base that customer-specific
-finding graphs can join against.
+This product turns public vulnerability data into decision-grade intelligence.
+It should help someone search for `react`, `next`, `vercel`, `log4j`, a CVE, a
+GHSA, or a package URL and quickly understand:
 
-## What this layer should model
+- which vulnerabilities are relevant
+- which versions or products are affected
+- whether the issue is known exploited or likely exploitable
+- what attacker capability the vulnerability may create
+- what malicious outcomes may follow
+- what fixes, patches, or mitigations exist
+- which sources agree, disagree, or are uncertain
+- what evidence backs the answer
 
-The global layer should model facts that are true outside any one customer
-environment:
+## Who We Serve
 
-- Vulnerability identity and aliases
-- Affected products, packages, modules, operating systems, and version ranges
-- Fixed versions and remediation guidance
-- Advisories and source provenance
-- Weakness classes and root-cause categories
-- Exploitability signals
-- Known exploitation in the wild
-- Severity and prioritization signals
-- Attack prerequisites and required configurations
-- Relationships between vulnerabilities
-- References, patches, commits, and disclosure timeline
+The initial audience is:
 
-It should explicitly avoid modeling:
+- security engineers triaging public vulnerability intelligence
+- AppSec teams tracking package and framework risk
+- SecOps teams watching newly exploited vulnerabilities
+- platform engineers responsible for common stacks
+- open-source maintainers and package users
+- cyber-curious users trying to understand how vulnerabilities become attacks
 
-- Customer assets
-- Customer identities
-- Customer networks
-- Customer owners
-- Customer tickets
-- Customer-specific finding state
-- Customer-specific reachability or exploitability
+Without customer data, we cannot say:
 
-Those belong in the customer layer.
+> Your asset is vulnerable.
 
-## Core node types
+Instead, we can say:
 
-### Vulnerability
+> This software, version, package, dependency chain, framework, or platform is
+> affected or potentially affected, and here is why it matters.
 
-A security weakness with a stable public identifier or source-specific advisory
-identifier.
+Customer-specific asset exposure can be added later by attaching asset, scanner,
+SBOM, repository, and runtime data to the global graph.
 
-- **Properties:** `{id, primary_id, title, summary, published_at, modified_at, reserved_at, withdrawn_at}`
-- **Examples:** `CVE-2021-44228`, `GHSA-jfh8-c2jp-5v3q`, `PYSEC-2022-42969`
+## How We Help
 
-`Vulnerability` is the center of the global graph. It should support aliases
-because many sources describe the same issue with different identifiers.
+The product should reduce the work required to go from raw vulnerability record
+to security decision.
 
-### Advisory
+Instead of forcing users to manually compare OSV, NVD, GitHub advisories, vendor
+bulletins, CISA KEV, EPSS, exploit databases, package metadata, and patch notes,
+the system should reconcile those sources into a clear page.
 
-A source document that makes claims about a vulnerability.
+Each important conclusion should answer:
 
-- **Properties:** `{source, source_id, url, published_at, modified_at, withdrawn, severity_text}`
-- **Examples:** NVD record, GitHub Security Advisory, OSV advisory, vendor bulletin, distro advisory.
+- What is the claim?
+- Who says so?
+- How confident are we?
+- Is it reported, extracted, inferred, or curated?
+- What evidence supports it?
 
-Advisories should be first-class nodes because provenance matters. Two sources
-can disagree about affected ranges, fixed versions, severity, or exploitability.
+## Differentiation
 
-### Source
+OSV is the closest public analog to the foundation of this product. OSV is very
+good at package/version vulnerability matching. It answers:
 
-An upstream authority or feed.
+> Is this package version affected?
 
-- **Properties:** `{name, type, trust_tier, url}`
-- **Examples:** NVD, OSV, GitHub Advisory Database, CISA KEV, vendor advisory feed, distro security tracker.
+This product should build on sources like OSV but answer a broader question:
 
-### Package
+> How much should I care, how might exploitation work, what harm could result,
+> and why should I trust the answer?
 
-A named software artifact within an ecosystem.
+Compared with traditional vulnerability databases, the product should emphasize:
 
-- **Properties:** `{name, ecosystem, namespace, purl}`
-- **Examples:** Maven `org.apache.logging.log4j:log4j-core`, npm `lodash`, PyPI `django`.
+- vulnerability-to-exploitation reasoning
+- exploitability and impact, not only severity
+- source disagreement and claim provenance
+- dependency and reverse-dependency traversal
+- ecosystem search from terms like `react`, `next`, or `vercel`
+- fix paths and mitigation clarity
+- explicit uncertainty instead of false precision
 
-### PackageVersion
+The product should be an intelligence engine first and a visualization second.
+Graph traversal is valuable because it answers questions across relationships,
+not because a graph view looks impressive.
 
-A concrete released version of a package.
+## Core User Flow
 
-- **Properties:** `{version, normalized_version, released_at, yanked}`
-- **Examples:** `2.14.1`, `1.2.3-r0`, `3.11.4`.
+The landing experience should be search plus a high-signal intelligence feed.
 
-Use this when the graph needs exact release points, dependency matching, or
-fixed-version traversal.
+Users can start with:
 
-### AffectedVersionRange
+- a vulnerability ID: `CVE-2021-44228`, `GHSA-...`
+- a package: `react`, `lodash`, `log4j-core`
+- a framework: `Next.js`, `Remix`, `Django`
+- a platform or vendor: `Vercel`, `Cloudflare`, `Ubuntu`
+- a package URL or version
 
-A version constraint that describes vulnerable versions.
+The page should surface:
 
-- **Properties:** `{introduced, fixed, last_affected, limit, range_type, expression}`
-- **Examples:** `< 2.17.1`, `>= 2.0-beta9 < 2.15.0`, `introduced: 0, fixed: 1.26.5`.
+- **Act Now:** known exploited, high-confidence, high-impact items
+- **Investigate:** serious but conditional or uncertain items
+- **Monitor:** real issues with weak current exploit signal
+- **Low Signal:** searchable, but not promoted by default
 
-This should be first-class. Many sources describe vulnerability impact as ranges,
-not enumerated versions. Ranges also handle ecosystem-specific version semantics,
-distro backports, and open-ended affected intervals more accurately than exact
-version nodes alone.
+For a package or ecosystem search, the product should show:
 
-### Product
+- direct vulnerabilities in that package
+- affected and fixed versions
+- relevant dependency vulnerabilities
+- downstream packages, frameworks, or products that may be affected
+- current high-signal issues connected to the ecosystem
 
-A vendor product, project, operating system, image, appliance, or service.
+For a vulnerability page, the product should show:
 
-- **Properties:** `{name, vendor, product_type, cpe}`
-- **Examples:** OpenSSL, Windows Server, Ubuntu, Cisco IOS XE, Apache HTTP Server.
+- verdict and rationale
+- affected software and versions
+- exploitation model
+- likely or confirmed malicious outcomes
+- prerequisites and conditions
+- fixes, patches, and mitigations
+- source comparison
+- evidence and timeline
+- related vulnerabilities, weaknesses, and patches
 
-Use `Product` for CPE-style or vendor-product advisories that do not map cleanly
-to a package ecosystem.
+## Vulnerability To Exploitation
 
-### Vendor
+A vulnerability is not the harm itself. Exploitation is how an attacker turns a
+weakness into a capability, and then into an outcome that causes damage.
 
-An organization responsible for a product or advisory.
+The product should teach and model this chain:
 
-- **Properties:** `{name, url}`
-- **Examples:** Microsoft, Apache Software Foundation, Red Hat, Cisco.
-
-### Weakness
-
-A class of software or system weakness.
-
-- **Properties:** `{cwe_id, name, abstraction_level}`
-- **Examples:** `CWE-79`, `CWE-89`, `CWE-502`.
-
-### SeverityAssessment
-
-A source-specific severity claim.
-
-- **Properties:** `{system, score, vector, rating, assessed_at}`
-- **Examples:** CVSS v3.1 vector, CVSS v4.0 vector, vendor criticality, distro severity.
-
-Severity should be modeled as a claim, not only as a property on
-`Vulnerability`, because sources often disagree or change over time.
-
-### Exploit
-
-Evidence of exploit code, a proof of concept, weaponization, or observed
-exploitation.
-
-- **Properties:** `{type, maturity, url, published_at, verified, description}`
-- **Examples:** public PoC, Metasploit module, exploit-db entry, vendor statement, observed exploitation report.
-
-### ExploitSignal
-
-A time-varying prioritization or exploitability signal.
-
-- **Properties:** `{signal_type, score, percentile, observed_at}`
-- **Examples:** EPSS score, CISA KEV status, exploit maturity, ransomware association.
-
-Use a separate node when the signal has a source, timestamp, and history.
-
-### AttackTechnique
-
-A tactic, technique, or procedure associated with exploitation.
-
-- **Properties:** `{framework, technique_id, name}`
-- **Examples:** MITRE ATT&CK technique IDs.
-
-### Prerequisite
-
-A condition required for exploitation.
-
-- **Properties:** `{kind, description}`
-- **Examples:** authentication required, local access required, vulnerable feature enabled, public endpoint exposed, specific configuration flag.
-
-### Patch
-
-A change that remediates or mitigates a vulnerability.
-
-- **Properties:** `{type, url, commit_sha, released_at, description}`
-- **Examples:** Git commit, pull request, vendor patch, distro package update, workaround.
-
-### Reference
-
-A supporting URL or document.
-
-- **Properties:** `{url, title, tags, published_at}`
-- **Examples:** vendor blog, mailing list post, release note, commit URL, exploit write-up.
-
-### Evidence
-
-A source-backed assertion supporting a relationship or property.
-
-- **Properties:** `{statement, confidence, collected_at, extractor, raw_location}`
-
-Use evidence when the platform needs to explain why a relationship exists,
-especially for inferred or ML-extracted data.
-
-## Core edge types
-
-Edges should be typed and should carry provenance where useful.
-
-### Vulnerability identity
-
-- `Vulnerability --HAS_ALIAS--> Vulnerability`
-- `Vulnerability --DESCRIBED_BY--> Advisory`
-- `Advisory --PUBLISHED_BY--> Source`
-- `Advisory --REFERENCES--> Reference`
-
-Aliases can also be represented as properties, but an edge is useful when alias
-records come from different sources and need provenance.
-
-### Affected software
-
-- `Vulnerability --AFFECTS--> Package`
-- `Vulnerability --AFFECTS_PRODUCT--> Product`
-- `Vulnerability --HAS_AFFECTED_RANGE--> AffectedVersionRange`
-- `AffectedVersionRange --OF_PACKAGE--> Package`
-- `AffectedVersionRange --OF_PRODUCT--> Product`
-- `PackageVersion --IS_VERSION_OF--> Package`
-- `PackageVersion --MATCHES_RANGE--> AffectedVersionRange`
-
-The important relationship is usually not "CVE affects exact version X." It is:
-
-> This source claims this vulnerability affects this package or product under
-> these version constraints.
-
-Exact version matching can be materialized later for fast lookup.
-
-### Fixes and remediation
-
-- `AffectedVersionRange --FIXED_BY_VERSION--> PackageVersion`
-- `Vulnerability --FIXED_BY--> Patch`
-- `Patch --CHANGES--> Package`
-- `Patch --REFERENCES--> Reference`
-- `Vulnerability --MITIGATED_BY--> Patch`
-
-Fix data should distinguish between:
-
-- a fixed upstream package version
-- a vendor patch
-- a distro backport
-- a configuration workaround
-- a compensating control
-
-### Severity and prioritization
-
-- `Vulnerability --HAS_SEVERITY--> SeverityAssessment`
-- `SeverityAssessment --ASSERTED_BY--> Source`
-- `Vulnerability --HAS_EXPLOIT_SIGNAL--> ExploitSignal`
-- `ExploitSignal --ASSERTED_BY--> Source`
-
-Do not collapse all prioritization into one severity number. CVSS, EPSS, KEV,
-exploit maturity, and vendor criticality answer different questions.
-
-### Weakness and attack context
-
-- `Vulnerability --INSTANCE_OF--> Weakness`
-- `Vulnerability --ENABLES_TECHNIQUE--> AttackTechnique`
-- `Vulnerability --REQUIRES--> Prerequisite`
-- `Vulnerability --RELATED_TO--> Vulnerability` (props: `{relationship_type}`)
-
-Useful `RELATED_TO` values include:
-
-- `same_root_cause`
-- `same_patch`
-- `bypasses_fix_for`
-- `exploited_together`
-- `duplicate_of`
-- `supersedes`
-- `variant_of`
-
-### Exploit evidence
-
-- `Vulnerability --HAS_EXPLOIT--> Exploit`
-- `Exploit --REFERENCES--> Reference`
-- `Exploit --ASSERTED_BY--> Source`
-- `Exploit --TARGETS--> Product`
-- `Exploit --TARGETS_PACKAGE--> Package`
-
-Exploit relationships should be careful about confidence. A public blog claiming
-"exploitation is possible" is different from CISA KEV inclusion or confirmed
-incident response evidence.
-
-### Provenance and evidence
-
-- `AnyNodeOrEdge --SUPPORTED_BY--> Evidence`
-- `Evidence --FROM_ADVISORY--> Advisory`
-- `Evidence --FROM_REFERENCE--> Reference`
-- `Evidence --ASSERTED_BY--> Source`
-
-Most graph databases do not support edges pointing to edges directly. If edge
-provenance is required, use one of these patterns:
-
-1. Store `{source, confidence, observed_at}` properties on the edge.
-2. Promote the claim to a node, such as `AffectedClaim`.
-3. Use an `Evidence` node connected to the entities involved in the claim.
-
-For high-quality vulnerability intelligence, the second pattern is often best.
-
-## Claim nodes for disputed facts
-
-Some facts should be modeled as claims rather than direct edges because sources
-disagree.
-
-### AffectedClaim
-
-A source-backed claim that a vulnerability affects a software target under a
-specific constraint.
-
-- **Properties:** `{status, confidence, collected_at, last_verified_at}`
-- **Edges:**
-  - `AffectedClaim --ABOUT--> Vulnerability`
-  - `AffectedClaim --TARGETS_PACKAGE--> Package`
-  - `AffectedClaim --TARGETS_PRODUCT--> Product`
-  - `AffectedClaim --USES_RANGE--> AffectedVersionRange`
-  - `AffectedClaim --ASSERTED_BY--> Advisory`
-  - `AffectedClaim --SUPPORTED_BY--> Evidence`
-
-This makes disagreement explicit. One advisory can say a version is affected,
-another can say it is not, and the graph can preserve both claims.
-
-### FixClaim
-
-A source-backed claim that a version, patch, or workaround fixes a vulnerability.
-
-- **Properties:** `{fix_type, confidence, collected_at}`
-- **Edges:**
-  - `FixClaim --ABOUT--> Vulnerability`
-  - `FixClaim --FIXED_BY_VERSION--> PackageVersion`
-  - `FixClaim --FIXED_BY_PATCH--> Patch`
-  - `FixClaim --ASSERTED_BY--> Advisory`
-
-### SeverityClaim
-
-A source-backed severity assessment.
-
-- **Properties:** `{system, score, vector, rating, confidence, assessed_at}`
-- **Edges:**
-  - `SeverityClaim --ABOUT--> Vulnerability`
-  - `SeverityClaim --ASSERTED_BY--> Advisory`
-
-## Design rule: global fact vs. customer fact
-
-A concept belongs in the global layer when it is true independent of a customer's
-environment.
-
-Good global facts:
-
-- Log4j `2.14.1` is within an affected range for a vulnerability.
-- A vendor advisory says version `2.17.1` fixes the issue.
-- A vulnerability has public exploit code.
-- A vulnerability maps to a CWE.
-- A vulnerability is in CISA KEV.
-
-Customer facts:
-
-- This company runs Log4j `2.14.1` on host `ip-10-0-4-12`.
-- This vulnerable host is internet-exposed.
-- The platform team owns the service.
-- A scanner opened a finding yesterday.
-- The issue is accepted risk until next quarter.
-
-The customer layer should point into the global layer, not duplicate it.
-
-## Entity resolution
-
-Entity resolution is still the hard problem even without customer data.
-
-The graph must normalize:
-
-- CVE IDs, GHSA IDs, OSV IDs, vendor advisory IDs, and distro advisory IDs
-- Package names across ecosystems
-- CPEs, PURLs, SWIDs, and vendor-product names
-- Version syntax across semver, Maven, Debian, RPM, Go modules, Python, npm, and containers
-- Forks, renamed projects, split packages, and bundled dependencies
-- Distro backports where the visible version may remain old but contain a fix
-
-Bad entity resolution creates bad vulnerability intelligence. It can make safe
-versions look vulnerable, hide vulnerable forks, or merge unrelated products.
-
-## Useful queries
-
-### What versions are affected?
-
-```cypher
-MATCH (v:Vulnerability {id: 'CVE-2021-44228'})
-      -[:HAS_AFFECTED_RANGE]->(r:AffectedVersionRange)
-      -[:OF_PACKAGE]->(p:Package)
-RETURN p.ecosystem, p.name, r.expression, r.introduced, r.fixed
+```text
+Vulnerable software exists
+-> vulnerable code is included
+-> vulnerable code is reachable
+-> attacker can trigger it
+-> attacker gains an exploit primitive
+-> attacker achieves a malicious outcome
 ```
 
-### What fixes are available?
+Each step matters. If package `A` depends on vulnerable package `B`, then `A` is
+not automatically exploitable in the strongest sense. It is potentially affected.
+Whether it matters depends on runtime use, attacker-controlled input, feature
+configuration, reachability, and exploit maturity.
 
-```cypher
-MATCH (v:Vulnerability {id: 'CVE-2021-44228'})
-      -[:HAS_AFFECTED_RANGE]->(:AffectedVersionRange)
-      -[:FIXED_BY_VERSION]->(pv:PackageVersion)
-      -[:IS_VERSION_OF]->(p:Package)
-RETURN p.ecosystem, p.name, pv.version
+Example:
+
+```text
+SQL injection
+-> query manipulation
+-> data read, data modification, possible auth bypass
 ```
 
-### Which sources disagree?
+Example:
 
-```cypher
-MATCH (v:Vulnerability {id: 'CVE-2021-44228'})
-      <-[:ABOUT]-(claim:AffectedClaim)
-      -[:ASSERTED_BY]->(a:Advisory)
-RETURN claim.status, claim.confidence, a.source, a.source_id
+```text
+SSRF
+-> server-side request forgery
+-> internal service access, cloud credential theft, network pivot
 ```
 
-### What should be prioritized globally?
+Example:
 
-```cypher
-MATCH (v:Vulnerability)-[:HAS_EXPLOIT_SIGNAL]->(s:ExploitSignal)
-WHERE s.signal_type IN ['kev', 'epss', 'public_exploit']
-RETURN v.id, collect(s) AS signals
+```text
+XSS
+-> browser script execution
+-> session theft, account takeover, user impersonation
 ```
 
-### What is related to this vulnerability?
+This distinction is central to the product. A vulnerability page should not only
+say:
 
-```cypher
-MATCH path = (:Vulnerability {id: 'CVE-2021-44228'})
-             -[:INSTANCE_OF|RELATED_TO|ENABLES_TECHNIQUE*1..3]-(related)
-RETURN path
+```text
+CWE-89 SQL Injection
+Severity: Critical
 ```
 
-## Ingestion sources
+It should explain:
 
-Useful sources for the global layer include:
+```text
+Weakness: SQL injection
+Exploit primitive: attacker may manipulate database queries
+Likely outcomes: data extraction, data modification, possible auth bypass
+Requires: attacker-controlled input reaches a vulnerable query
+Evidence: source advisories, CVSS vector, exploit references
+```
 
-| Source type | Maps to |
-|---|---|
-| CVE / NVD records | `Vulnerability`, `SeverityClaim`, `Weakness`, `Reference` |
-| OSV advisories | `Advisory`, `AffectedClaim`, `AffectedVersionRange`, `Package`, `PackageVersion` |
-| GitHub Security Advisories | `Advisory`, `Vulnerability`, `Package`, `AffectedClaim`, `FixClaim` |
-| Vendor advisories | `Advisory`, `Product`, `Patch`, `Reference`, `FixClaim` |
-| Distro security trackers | `Product`, `Package`, `AffectedClaim`, `FixClaim` |
-| CISA KEV | `ExploitSignal` |
-| EPSS | `ExploitSignal` |
-| Exploit databases | `Exploit`, `Reference`, `ExploitSignal` |
-| CWE catalog | `Weakness` |
-| ATT&CK mappings | `AttackTechnique` |
-| Source repositories | `Patch`, `Reference`, `PackageVersion` |
+## Confidence And Provenance
 
-Every connector should preserve source identity, timestamps, and raw references.
-The goal is not just to know the answer; it is to know who claimed it, when, and
-with what confidence.
+Most sources do not provide an exact structured exploitation model. They provide
+clues:
 
-## How this connects to the customer layer
+- CWE mappings
+- CVSS vectors
+- affected versions
+- fixed versions
+- summary text
+- references
+- exploit signals
+- advisory metadata
 
-The customer layer should attach through observed software or findings:
+The product should separate four kinds of knowledge:
 
-- `Finding --DETECTS--> Vulnerability`
-- `Asset --RUNS--> PackageVersion`
-- `SBOMComponent --RESOLVES_TO--> PackageVersion`
-- `ContainerImage --CONTAINS--> PackageVersion`
-- `Repository --DECLARES_DEPENDENCY_ON--> Package`
-- `DependencyInstance --MATCHES_RANGE--> AffectedVersionRange`
+- **Reported:** explicitly stated by a source
+- **Extracted:** parsed from advisory text, patch notes, or references
+- **Inferred:** derived from CWE, CVSS, exploit signals, or source combinations
+- **Curated:** reviewed or corrected by us
 
-Then customer-specific risk queries can combine both layers:
+This prevents the system from overclaiming. A page can say:
 
-> "Show me internet-exposed assets running package versions that match affected
-> ranges for vulnerabilities with KEV status or high EPSS scores."
+```text
+Confirmed: public exploit exists
+Likely: network exploitation is practical
+Possible: data exfiltration
+Unknown: whether unauthenticated RCE is possible
+```
 
-The global layer supplies the vulnerability truth. The customer layer supplies
-exposure, ownership, and remediation workflow.
+## MVP Data Model
 
-## Product value without customer data
+The MVP should use a graph-shaped model even if the initial storage is Postgres.
 
-A global vulnerability graph is valuable even before customer data is attached,
-but only if it does more than draw a large graph.
+### Primary Nodes
 
-Valuable experiences include:
+```text
+Source
+Advisory
+Vulnerability
+Package
+PackageVersion
+Product
+Framework
+Platform
+AffectedVersionRange
+Weakness
+ExploitPrimitive
+MaliciousOutcome
+Prerequisite
+ExploitArtifact
+ExploitSignal
+Evidence
+```
 
-- Explain why a package version is or is not vulnerable.
-- Compare advisories and show conflicting claims.
-- Show all known fix paths and their source.
-- Track exploitability and prioritization signals over time.
-- Map vulnerability families, shared weaknesses, and related fixes.
-- Let users inspect provenance for every important conclusion.
-- Provide an API that answers "is this package/version affected?"
+### Claim Nodes
 
-Less valuable experiences include:
+Facts that are source-specific, disputed, extracted, or inferred should be
+modeled as claims.
 
-- A generic CVE-to-package visualization with no query focus.
-- A dense graph that is visually impressive but hard to act on.
-- A single severity score with no source breakdown.
-- A vulnerability page that repeats NVD without reconciling other sources.
+```text
+AffectedClaim
+FixClaim
+SeverityClaim
+ExploitabilityClaim
+OutcomeClaim
+PrerequisiteClaim
+```
 
-The graph should be useful as an intelligence engine first and a visualization
-second.
+Claims should carry:
 
-## Mental model
+```text
+source
+confidence
+status
+collected_at
+last_verified_at
+extraction_method
+evidence
+```
 
-The global layer is a source-backed map of vulnerability knowledge.
+### Core Relationships
 
-`Vulnerability` is the central concept. Around it are claims about affected
-software, fixed versions, weaknesses, exploitability, references, and source
-provenance. The graph preserves disagreement instead of flattening it away.
+Identity and provenance:
 
-The customer layer later asks:
+```text
+Vulnerability --HAS_ALIAS--> Vulnerability
+Vulnerability --DESCRIBED_BY--> Advisory
+Advisory --PUBLISHED_BY--> Source
+Advisory --REFERENCES--> Evidence
+```
 
-> "Do any of these global facts apply to my environment?"
+Affected software:
 
-That separation is the point. The global graph can be built, validated, queried,
-and sold as useful intelligence before a customer connects a single scanner or
-uploads a single asset inventory.
+```text
+Vulnerability --AFFECTS--> Package
+Vulnerability --AFFECTS_PRODUCT--> Product
+Vulnerability --HAS_AFFECTED_RANGE--> AffectedVersionRange
+AffectedVersionRange --OF_PACKAGE--> Package
+AffectedVersionRange --OF_PRODUCT--> Product
+PackageVersion --IS_VERSION_OF--> Package
+PackageVersion --MATCHES_RANGE--> AffectedVersionRange
+AffectedVersionRange --FIXED_BY_VERSION--> PackageVersion
+```
+
+Dependencies and ecosystem context:
+
+```text
+PackageVersion --DEPENDS_ON--> PackageVersion
+Package --COMMONLY_USED_WITH--> Package
+Framework --COMMONLY_USES--> Package
+Platform --SUPPORTS--> Framework
+```
+
+Exploitation model:
+
+```text
+Vulnerability --HAS_WEAKNESS--> Weakness
+Weakness --MAY_GRANT--> ExploitPrimitive
+Vulnerability --CONFIRMED_GRANTS--> ExploitPrimitive
+Vulnerability --REQUIRES--> Prerequisite
+ExploitPrimitive --CAN_LEAD_TO--> MaliciousOutcome
+Vulnerability --MAY_ENABLE--> MaliciousOutcome
+Vulnerability --CONFIRMED_ENABLES--> MaliciousOutcome
+```
+
+Exploit evidence and prioritization:
+
+```text
+Vulnerability --HAS_EXPLOIT--> ExploitArtifact
+Vulnerability --HAS_EXPLOIT_SIGNAL--> ExploitSignal
+ExploitArtifact --DEMONSTRATES--> ExploitPrimitive
+Evidence --SUPPORTS--> Claim
+Evidence --FROM_ADVISORY--> Advisory
+Evidence --ASSERTED_BY--> Source
+```
+
+## MVP Sources
+
+Start with sources that give the most leverage:
+
+- OSV for package vulnerabilities, affected ranges, fixes, aliases, references
+- NVD for CVEs, CVSS, CWE, CPE/product mappings, references
+- CISA KEV for known exploited status
+- EPSS for exploitation probability and percentile
+- CWE catalog for weakness taxonomy
+- npm/package registry or deps.dev for package versions and dependencies
+
+The first ecosystem should likely be JavaScript/npm because it supports searches
+like `react`, `next`, and `vercel`, and because dependency relationships are
+central to the product thesis.
+
+## MVP Verdict Model
+
+The product should produce a transparent care verdict:
+
+```text
+Act Now
+Investigate
+Monitor
+Low Signal
+```
+
+Useful scoring inputs:
+
+- CISA KEV inclusion
+- EPSS score and percentile
+- public exploit or PoC
+- exploit maturity
+- CVSS vector and impact
+- remote/network exploitability
+- privileges required
+- user interaction required
+- affected package popularity
+- fix availability
+- source confidence
+- source disagreement
+
+The score should be less important than the explanation. Users should see why
+the system reached the verdict.
+
+## Implementation Direction
+
+Build in this order:
+
+1. Ingest OSV, NVD, CISA KEV, EPSS, CWE, and npm package metadata.
+2. Normalize vulnerabilities, aliases, packages, versions, affected ranges, and
+   sources.
+3. Create claim and evidence records instead of flattening all facts into one
+   vulnerability object.
+4. Add rules-based mappings from CWE/CVSS to exploit primitives and likely
+   malicious outcomes.
+5. Build search for vulnerabilities, packages, frameworks, platforms, and
+   products.
+6. Build vulnerability decision pages.
+7. Build package/ecosystem pages.
+8. Add dependency and reverse-dependency traversal.
+9. Add source comparison and confidence visualization.
+
+The MVP is successful when a user can search for a package, platform, framework,
+or vulnerability and quickly answer:
+
+- Is anything here worth caring about?
+- What exactly is affected?
+- How could exploitation work?
+- What harm could result?
+- What fixes or mitigations exist?
+- Who says so?
+- How confident is the system?
+
