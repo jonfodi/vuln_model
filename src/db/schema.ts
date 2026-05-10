@@ -1,6 +1,11 @@
+import { sql } from "drizzle-orm";
 import {
+  boolean,
+  check,
+  date,
   index,
   jsonb,
+  numeric,
   pgTable,
   primaryKey,
   text,
@@ -108,7 +113,9 @@ export const vulnerabilityRecords = pgTable(
   }),
 );
 
-// same vulnerability can be referenced by multiple sources 
+// External identifiers used to reconcile source records into one vulnerability.
+// Ingestion examples: CVE cveMetadata.cveId, OSV id/aliases/upstream, GHSA IDs,
+// distro advisory IDs.
 export const identifiers = pgTable(
   "identifiers",
   {
@@ -123,7 +130,7 @@ export const identifiers = pgTable(
   }),
 );
 
-// join table 
+// Canonical identifiers after clustering records into a vulnerability.
 export const vulnerabilityIdentifiers = pgTable(
   "vulnerability_identifiers",
   {
@@ -162,6 +169,8 @@ export const vulnerabilityRecordIdentifiers = pgTable(
   }),
 );
 
+// Package distribution namespace. OSV affected[].package.ecosystem is the
+// primary source for this in the MVP; examples: npm, Maven, PyPI, Ubuntu.
 export const ecosystems = pgTable(
   "ecosystems",
   {
@@ -178,6 +187,8 @@ export const ecosystems = pgTable(
   }),
 );
 
+// Vendor/product-level affected software. CVE containers.cna.affected[] is the
+// primary source for this in the MVP; examples: Google Chrome, Cisco IOS XE.
 export const products = pgTable(
   "products",
   {
@@ -193,6 +204,8 @@ export const products = pgTable(
   }),
 );
 
+// Installable package in a package ecosystem. OSV affected[].package.name/purl
+// is the primary source for this in the MVP.
 export const packages = pgTable(
   "packages",
   {
@@ -214,6 +227,9 @@ export const packages = pgTable(
   }),
 );
 
+// Enrichment link from installable packages back to human product/project names.
+// This is not proof of affectedness; affectedPackages/affectedProducts hold
+// source-backed affectedness.
 export const packageProducts = pgTable(
   "package_products",
   {
@@ -282,13 +298,21 @@ export const affectedPackages = pgTable(
   }),
 );
 
+// Affected/fixed version logic for a source-backed affected package or product.
+// OSV contributes package ranges from affected[].ranges/events and versions[].
+// CVE contributes product ranges from containers.cna.affected[].versions.
 export const versionRanges = pgTable(
   "version_ranges",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    affectedPackageId: uuid("affected_package_id")
-      .notNull()
-      .references(() => affectedPackages.id, { onDelete: "cascade" }),
+    affectedPackageId: uuid("affected_package_id").references(
+      () => affectedPackages.id,
+      { onDelete: "cascade" },
+    ),
+    affectedProductId: uuid("affected_product_id").references(
+      () => affectedProducts.id,
+      { onDelete: "cascade" },
+    ),
     rangeType: text("range_type"),
     introduced: text("introduced"),
     fixed: text("fixed"),
@@ -303,7 +327,14 @@ export const versionRanges = pgTable(
     affectedPackageIdx: index("version_ranges_affected_package_idx").on(
       table.affectedPackageId,
     ),
+    affectedProductIdx: index("version_ranges_affected_product_idx").on(
+      table.affectedProductId,
+    ),
     fixedIdx: index("version_ranges_fixed_idx").on(table.fixed),
+    oneAffectedTargetChk: check(
+      "version_ranges_one_affected_target_chk",
+      sql`(${table.affectedPackageId} is not null and ${table.affectedProductId} is null) or (${table.affectedPackageId} is null and ${table.affectedProductId} is not null)`,
+    ),
   }),
 );
 
@@ -326,6 +357,213 @@ export const affectedProducts = pgTable(
       table.productId,
     ),
     productIdx: index("affected_products_product_idx").on(table.productId),
+  }),
+);
+
+// CWE weakness classes asserted by source records. CVE problemTypes is the
+// primary source in the MVP; GHSA/NVD may add more CWE facts later.
+export const weaknesses = pgTable(
+  "weaknesses",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    cweId: text("cwe_id").notNull(),
+    name: text("name"),
+    description: text("description"),
+    ...timestamps,
+  },
+  (table) => ({
+    cweIdIdx: uniqueIndex("weaknesses_cwe_id_idx").on(table.cweId),
+  }),
+);
+
+export const vulnerabilityRecordWeaknesses = pgTable(
+  "vulnerability_record_weaknesses",
+  {
+    vulnerabilityRecordId: uuid("vulnerability_record_id")
+      .notNull()
+      .references(() => vulnerabilityRecords.id, { onDelete: "cascade" }),
+    weaknessId: uuid("weakness_id")
+      .notNull()
+      .references(() => weaknesses.id, { onDelete: "cascade" }),
+    relationship: text("relationship").notNull().default("asserts"),
+    ...timestamps,
+  },
+  (table) => ({
+    pk: primaryKey({
+      columns: [table.vulnerabilityRecordId, table.weaknessId],
+    }),
+    weaknessIdx: index("vulnerability_record_weaknesses_weakness_idx").on(
+      table.weaknessId,
+    ),
+  }),
+);
+
+// Severity facts asserted by a source record. CVE contributes metrics from
+// containers.cna.metrics[] and containers.adp[].metrics[]; OSV contributes
+// severity[]; direct GHSA ingestion may contribute GitHub severity/CVSS later.
+export const severityMetrics = pgTable(
+  "severity_metrics",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    vulnerabilityRecordId: uuid("vulnerability_record_id")
+      .notNull()
+      .references(() => vulnerabilityRecords.id, { onDelete: "cascade" }),
+    sourceRecordId: uuid("source_record_id")
+      .notNull()
+      .references(() => sourceRecords.id, { onDelete: "cascade" }),
+    provider: text("provider"),
+    system: text("system").notNull(),
+    score: numeric("score", { precision: 4, scale: 1 }),
+    severity: text("severity"),
+    vector: text("vector"),
+    ...timestamps,
+  },
+  (table) => ({
+    vulnerabilityRecordIdx: index("severity_metrics_record_idx").on(
+      table.vulnerabilityRecordId,
+    ),
+    sourceRecordIdx: index("severity_metrics_source_record_idx").on(
+      table.sourceRecordId,
+    ),
+    systemIdx: index("severity_metrics_system_idx").on(table.system),
+  }),
+);
+
+// Mechanical parse of CVSS vectors stored in severityMetrics.vector. These are
+// source-backed exploitability conditions, not our own exploit path inference.
+export const cvssMetricDetails = pgTable(
+  "cvss_metric_details",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    severityMetricId: uuid("severity_metric_id")
+      .notNull()
+      .references(() => severityMetrics.id, { onDelete: "cascade" }),
+    cvssVersion: text("cvss_version").notNull(),
+    attackVector: text("attack_vector"),
+    attackComplexity: text("attack_complexity"),
+    privilegesRequired: text("privileges_required"),
+    userInteraction: text("user_interaction"),
+    scope: text("scope"),
+    confidentialityImpact: text("confidentiality_impact"),
+    integrityImpact: text("integrity_impact"),
+    availabilityImpact: text("availability_impact"),
+    ...timestamps,
+  },
+  (table) => ({
+    severityMetricIdx: uniqueIndex("cvss_metric_details_metric_idx").on(
+      table.severityMetricId,
+    ),
+    attackVectorIdx: index("cvss_metric_details_attack_vector_idx").on(
+      table.attackVector,
+    ),
+  }),
+);
+
+// CISA ADP Vulnrichment can appear inside CVE containers.adp[].metrics[] as
+// other.type = "ssvc". This is source-backed prioritization context.
+export const ssvcAssessments = pgTable(
+  "ssvc_assessments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    vulnerabilityRecordId: uuid("vulnerability_record_id")
+      .notNull()
+      .references(() => vulnerabilityRecords.id, { onDelete: "cascade" }),
+    sourceRecordId: uuid("source_record_id")
+      .notNull()
+      .references(() => sourceRecords.id, { onDelete: "cascade" }),
+    provider: text("provider"),
+    exploitation: text("exploitation"),
+    automatable: text("automatable"),
+    technicalImpact: text("technical_impact"),
+    role: text("role"),
+    version: text("version"),
+    assessedAt: timestamp("assessed_at", { withTimezone: true }),
+    ...timestamps,
+  },
+  (table) => ({
+    vulnerabilityRecordIdx: index("ssvc_assessments_record_idx").on(
+      table.vulnerabilityRecordId,
+    ),
+    sourceRecordIdx: index("ssvc_assessments_source_record_idx").on(
+      table.sourceRecordId,
+    ),
+    exploitationIdx: index("ssvc_assessments_exploitation_idx").on(
+      table.exploitation,
+    ),
+  }),
+);
+
+// CISA Known Exploited Vulnerabilities entries. Presence in this table means
+// CISA says the CVE is known exploited; fields come from the KEV catalog.
+export const kevEntries = pgTable(
+  "kev_entries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    vulnerabilityId: uuid("vulnerability_id").references(
+      () => vulnerabilities.id,
+      { onDelete: "set null" },
+    ),
+    sourceRecordId: uuid("source_record_id")
+      .notNull()
+      .references(() => sourceRecords.id, { onDelete: "cascade" }),
+    cveIdentifierId: uuid("cve_identifier_id")
+      .notNull()
+      .references(() => identifiers.id, { onDelete: "restrict" }),
+    knownExploited: boolean("known_exploited").notNull().default(true),
+    vendorProject: text("vendor_project"),
+    product: text("product"),
+    vulnerabilityName: text("vulnerability_name"),
+    shortDescription: text("short_description"),
+    dateAdded: date("date_added"),
+    dueDate: date("due_date"),
+    requiredAction: text("required_action"),
+    knownRansomwareCampaignUse: text("known_ransomware_campaign_use"),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (table) => ({
+    sourceRecordIdx: uniqueIndex("kev_entries_source_record_idx").on(
+      table.sourceRecordId,
+    ),
+    cveIdx: index("kev_entries_cve_idx").on(table.cveIdentifierId),
+    vulnerabilityIdx: index("kev_entries_vulnerability_idx").on(
+      table.vulnerabilityId,
+    ),
+  }),
+);
+
+// FIRST EPSS scores. EPSS is keyed by CVE and gives exploitation probability
+// and percentile for a scoring date.
+export const epssScores = pgTable(
+  "epss_scores",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    vulnerabilityId: uuid("vulnerability_id").references(
+      () => vulnerabilities.id,
+      { onDelete: "set null" },
+    ),
+    sourceRecordId: uuid("source_record_id")
+      .notNull()
+      .references(() => sourceRecords.id, { onDelete: "cascade" }),
+    cveIdentifierId: uuid("cve_identifier_id")
+      .notNull()
+      .references(() => identifiers.id, { onDelete: "restrict" }),
+    score: numeric("score", { precision: 7, scale: 6 }).notNull(),
+    percentile: numeric("percentile", { precision: 7, scale: 6 }).notNull(),
+    scoreDate: date("score_date").notNull(),
+    ...timestamps,
+  },
+  (table) => ({
+    identityIdx: uniqueIndex("epss_scores_cve_date_idx").on(
+      table.cveIdentifierId,
+      table.scoreDate,
+    ),
+    sourceRecordIdx: index("epss_scores_source_record_idx").on(
+      table.sourceRecordId,
+    ),
+    vulnerabilityIdx: index("epss_scores_vulnerability_idx").on(
+      table.vulnerabilityId,
+    ),
   }),
 );
 
