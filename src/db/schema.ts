@@ -33,9 +33,7 @@ export const sources = pgTable(
     url: text("url"),
     ...timestamps,
   },
-  (table) => ({
-    slugIdx: uniqueIndex("sources_slug_idx").on(table.slug),
-  }),
+  (table) => [uniqueIndex("sources_slug_idx").on(table.slug)],
 );
 
 export const sourceRecords = pgTable(
@@ -56,13 +54,13 @@ export const sourceRecords = pgTable(
     raw: jsonb("raw").notNull(),
     ...timestamps,
   },
-  (table) => ({
-    sourceExternalIdx: uniqueIndex("source_records_source_external_idx").on(
+  (table) => [
+    uniqueIndex("source_records_source_external_idx").on(
       table.sourceId,
       table.externalId,
     ),
-    sourceIdx: index("source_records_source_idx").on(table.sourceId),
-  }),
+    index("source_records_source_idx").on(table.sourceId),
+  ],
 );
 
 export const vulnerabilities = pgTable(
@@ -75,11 +73,11 @@ export const vulnerabilities = pgTable(
     status: text("status").notNull().default("active"),
     ...timestamps,
   },
-  (table) => ({
-    primaryIdentifierIdx: uniqueIndex("vulnerabilities_primary_identifier_idx").on(
+  (table) => [
+    uniqueIndex("vulnerabilities_primary_identifier_idx").on(
       table.primaryIdentifier,
     ),
-  }),
+  ],
 );
 
 export const vulnerabilityRecords = pgTable(
@@ -102,15 +100,15 @@ export const vulnerabilityRecords = pgTable(
     status: text("status").notNull().default("active"),
     ...timestamps,
   },
-  (table) => ({
-    sourceRecordIdx: uniqueIndex("vulnerability_records_source_record_idx").on(
+  (table) => [
+    uniqueIndex("vulnerability_records_source_record_idx").on(
       table.sourceRecordId,
     ),
-    vulnerabilityIdx: index("vulnerability_records_vulnerability_idx").on(
+    index("vulnerability_records_vulnerability_idx").on(
       table.vulnerabilityId,
     ),
-    recordIdIdx: index("vulnerability_records_record_id_idx").on(table.recordId),
-  }),
+    index("vulnerability_records_record_id_idx").on(table.recordId),
+  ],
 );
 
 // External identifiers used to reconcile source records into one vulnerability.
@@ -124,10 +122,10 @@ export const identifiers = pgTable(
     kind: text("kind").notNull(),
     ...timestamps,
   },
-  (table) => ({
-    valueIdx: uniqueIndex("identifiers_value_idx").on(table.value),
-    kindIdx: index("identifiers_kind_idx").on(table.kind),
-  }),
+  (table) => [
+    uniqueIndex("identifiers_value_idx").on(table.value),
+    index("identifiers_kind_idx").on(table.kind),
+  ],
 );
 
 // Canonical identifiers after clustering records into a vulnerability.
@@ -143,11 +141,11 @@ export const vulnerabilityIdentifiers = pgTable(
     relationship: text("relationship").notNull().default("alias"),
     ...timestamps,
   },
-  (table) => ({
-    pk: primaryKey({
+  (table) => [
+    primaryKey({
       columns: [table.vulnerabilityId, table.identifierId],
     }),
-  }),
+  ],
 );
 
 export const vulnerabilityRecordIdentifiers = pgTable(
@@ -162,11 +160,11 @@ export const vulnerabilityRecordIdentifiers = pgTable(
     relationship: text("relationship").notNull().default("alias"),
     ...timestamps,
   },
-  (table) => ({
-    pk: primaryKey({
+  (table) => [
+    primaryKey({
       columns: [table.vulnerabilityRecordId, table.identifierId],
     }),
-  }),
+  ],
 );
 
 // Package distribution namespace. OSV affected[].package.ecosystem is the
@@ -182,9 +180,7 @@ export const ecosystems = pgTable(
     packageUrlType: text("package_url_type"),
     ...timestamps,
   },
-  (table) => ({
-    slugIdx: uniqueIndex("ecosystems_slug_idx").on(table.slug),
-  }),
+  (table) => [uniqueIndex("ecosystems_slug_idx").on(table.slug)],
 );
 
 // Vendor/product-level affected software. CVE containers.cna.affected[] is the
@@ -198,10 +194,10 @@ export const products = pgTable(
     vendor: text("vendor"),
     ...timestamps,
   },
-  (table) => ({
-    slugIdx: uniqueIndex("products_slug_idx").on(table.slug),
-    nameIdx: index("products_name_idx").on(table.name),
-  }),
+  (table) => [
+    uniqueIndex("products_slug_idx").on(table.slug),
+    index("products_name_idx").on(table.name),
+  ],
 );
 
 // Installable package in a package ecosystem. OSV affected[].package.name/purl
@@ -217,14 +213,14 @@ export const packages = pgTable(
     purl: text("purl"),
     ...timestamps,
   },
-  (table) => ({
-    identityIdx: uniqueIndex("packages_ecosystem_name_idx").on(
+  (table) => [
+    uniqueIndex("packages_ecosystem_name_idx").on(
       table.ecosystemId,
       table.name,
     ),
-    purlIdx: uniqueIndex("packages_purl_idx").on(table.purl),
-    nameIdx: index("packages_name_idx").on(table.name),
-  }),
+    uniqueIndex("packages_purl_idx").on(table.purl),
+    index("packages_name_idx").on(table.name),
+  ],
 );
 
 // Enrichment link from installable packages back to human product/project names.
@@ -244,12 +240,12 @@ export const packageProducts = pgTable(
     source: text("source"),
     ...timestamps,
   },
-  (table) => ({
-    pk: primaryKey({
+  (table) => [
+    primaryKey({
       columns: [table.packageId, table.productId],
     }),
-    productIdx: index("package_products_product_idx").on(table.productId),
-  }),
+    index("package_products_product_idx").on(table.productId),
+  ],
 );
 
 export const packageVersions = pgTable(
@@ -264,13 +260,13 @@ export const packageVersions = pgTable(
     releasedAt: timestamp("released_at", { withTimezone: true }),
     ...timestamps,
   },
-  (table) => ({
-    identityIdx: uniqueIndex("package_versions_package_version_idx").on(
+  (table) => [
+    uniqueIndex("package_versions_package_version_idx").on(
       table.packageId,
       table.version,
     ),
-    packageIdx: index("package_versions_package_idx").on(table.packageId),
-  }),
+    index("package_versions_package_idx").on(table.packageId),
+  ],
 );
 
 // Source-backed package affectedness. OSV affected[] is the primary MVP source:
@@ -288,16 +284,16 @@ export const affectedPackages = pgTable(
     relationship: text("relationship").notNull().default("affected"),
     ...timestamps,
   },
-  (table) => ({
-    identityIdx: uniqueIndex("affected_packages_record_package_idx").on(
+  (table) => [
+    uniqueIndex("affected_packages_record_package_idx").on(
       table.vulnerabilityRecordId,
       table.packageId,
     ),
-    packageIdx: index("affected_packages_package_idx").on(table.packageId),
-    recordIdx: index("affected_packages_record_idx").on(
+    index("affected_packages_package_idx").on(table.packageId),
+    index("affected_packages_record_idx").on(
       table.vulnerabilityRecordId,
     ),
-  }),
+  ],
 );
 
 // Affected/fixed version logic for a source-backed affected package or product.
@@ -325,19 +321,19 @@ export const versionRanges = pgTable(
     raw: jsonb("raw"),
     ...timestamps,
   },
-  (table) => ({
-    affectedPackageIdx: index("version_ranges_affected_package_idx").on(
+  (table) => [
+    index("version_ranges_affected_package_idx").on(
       table.affectedPackageId,
     ),
-    affectedProductIdx: index("version_ranges_affected_product_idx").on(
+    index("version_ranges_affected_product_idx").on(
       table.affectedProductId,
     ),
-    fixedIdx: index("version_ranges_fixed_idx").on(table.fixed),
-    oneAffectedTargetChk: check(
+    index("version_ranges_fixed_idx").on(table.fixed),
+    check(
       "version_ranges_one_affected_target_chk",
       sql`(${table.affectedPackageId} is not null and ${table.affectedProductId} is null) or (${table.affectedPackageId} is null and ${table.affectedProductId} is not null)`,
     ),
-  }),
+  ],
 );
 
 // Source-backed product affectedness. CVE containers.cna.affected[] is the
@@ -356,13 +352,13 @@ export const affectedProducts = pgTable(
     relationship: text("relationship").notNull().default("affected"),
     ...timestamps,
   },
-  (table) => ({
-    identityIdx: uniqueIndex("affected_products_record_product_idx").on(
+  (table) => [
+    uniqueIndex("affected_products_record_product_idx").on(
       table.vulnerabilityRecordId,
       table.productId,
     ),
-    productIdx: index("affected_products_product_idx").on(table.productId),
-  }),
+    index("affected_products_product_idx").on(table.productId),
+  ],
 );
 
 // CWE weakness classes asserted by source records. CVE problemTypes is the
@@ -376,9 +372,7 @@ export const weaknesses = pgTable(
     description: text("description"),
     ...timestamps,
   },
-  (table) => ({
-    cweIdIdx: uniqueIndex("weaknesses_cwe_id_idx").on(table.cweId),
-  }),
+  (table) => [uniqueIndex("weaknesses_cwe_id_idx").on(table.cweId)],
 );
 
 export const vulnerabilityRecordWeaknesses = pgTable(
@@ -393,14 +387,14 @@ export const vulnerabilityRecordWeaknesses = pgTable(
     relationship: text("relationship").notNull().default("asserts"),
     ...timestamps,
   },
-  (table) => ({
-    pk: primaryKey({
+  (table) => [
+    primaryKey({
       columns: [table.vulnerabilityRecordId, table.weaknessId],
     }),
-    weaknessIdx: index("vulnerability_record_weaknesses_weakness_idx").on(
+    index("vulnerability_record_weaknesses_weakness_idx").on(
       table.weaknessId,
     ),
-  }),
+  ],
 );
 
 // Severity facts asserted by a source record. CVE contributes metrics from
@@ -423,15 +417,15 @@ export const severityMetrics = pgTable(
     vector: text("vector"),
     ...timestamps,
   },
-  (table) => ({
-    vulnerabilityRecordIdx: index("severity_metrics_record_idx").on(
+  (table) => [
+    index("severity_metrics_record_idx").on(
       table.vulnerabilityRecordId,
     ),
-    sourceRecordIdx: index("severity_metrics_source_record_idx").on(
+    index("severity_metrics_source_record_idx").on(
       table.sourceRecordId,
     ),
-    systemIdx: index("severity_metrics_system_idx").on(table.system),
-  }),
+    index("severity_metrics_system_idx").on(table.system),
+  ],
 );
 
 // Mechanical parse of CVSS vectors stored in severityMetrics.vector. These are
@@ -454,14 +448,14 @@ export const cvssMetricDetails = pgTable(
     availabilityImpact: text("availability_impact"),
     ...timestamps,
   },
-  (table) => ({
-    severityMetricIdx: uniqueIndex("cvss_metric_details_metric_idx").on(
+  (table) => [
+    uniqueIndex("cvss_metric_details_metric_idx").on(
       table.severityMetricId,
     ),
-    attackVectorIdx: index("cvss_metric_details_attack_vector_idx").on(
+    index("cvss_metric_details_attack_vector_idx").on(
       table.attackVector,
     ),
-  }),
+  ],
 );
 
 // CISA ADP Vulnrichment can appear inside CVE containers.adp[].metrics[] as
@@ -485,17 +479,17 @@ export const ssvcAssessments = pgTable(
     assessedAt: timestamp("assessed_at", { withTimezone: true }),
     ...timestamps,
   },
-  (table) => ({
-    vulnerabilityRecordIdx: index("ssvc_assessments_record_idx").on(
+  (table) => [
+    index("ssvc_assessments_record_idx").on(
       table.vulnerabilityRecordId,
     ),
-    sourceRecordIdx: index("ssvc_assessments_source_record_idx").on(
+    index("ssvc_assessments_source_record_idx").on(
       table.sourceRecordId,
     ),
-    exploitationIdx: index("ssvc_assessments_exploitation_idx").on(
+    index("ssvc_assessments_exploitation_idx").on(
       table.exploitation,
     ),
-  }),
+  ],
 );
 
 // CISA Known Exploited Vulnerabilities entries. Presence in this table means
@@ -526,15 +520,15 @@ export const kevEntries = pgTable(
     notes: text("notes"),
     ...timestamps,
   },
-  (table) => ({
-    sourceRecordIdx: uniqueIndex("kev_entries_source_record_idx").on(
+  (table) => [
+    uniqueIndex("kev_entries_source_record_idx").on(
       table.sourceRecordId,
     ),
-    cveIdx: index("kev_entries_cve_idx").on(table.cveIdentifierId),
-    vulnerabilityIdx: index("kev_entries_vulnerability_idx").on(
+    index("kev_entries_cve_idx").on(table.cveIdentifierId),
+    index("kev_entries_vulnerability_idx").on(
       table.vulnerabilityId,
     ),
-  }),
+  ],
 );
 
 // FIRST EPSS scores. EPSS is keyed by CVE and gives exploitation probability
@@ -558,18 +552,18 @@ export const epssScores = pgTable(
     scoreDate: date("score_date").notNull(),
     ...timestamps,
   },
-  (table) => ({
-    identityIdx: uniqueIndex("epss_scores_cve_date_idx").on(
+  (table) => [
+    uniqueIndex("epss_scores_cve_date_idx").on(
       table.cveIdentifierId,
       table.scoreDate,
     ),
-    sourceRecordIdx: index("epss_scores_source_record_idx").on(
+    index("epss_scores_source_record_idx").on(
       table.sourceRecordId,
     ),
-    vulnerabilityIdx: index("epss_scores_vulnerability_idx").on(
+    index("epss_scores_vulnerability_idx").on(
       table.vulnerabilityId,
     ),
-  }),
+  ],
 );
 
 export const externalReferences = pgTable(
@@ -581,9 +575,7 @@ export const externalReferences = pgTable(
     kind: text("kind"),
     ...timestamps,
   },
-  (table) => ({
-    urlIdx: uniqueIndex("external_references_url_idx").on(table.url),
-  }),
+  (table) => [uniqueIndex("external_references_url_idx").on(table.url)],
 );
 
 export const vulnerabilityRecordReferences = pgTable(
@@ -598,9 +590,9 @@ export const vulnerabilityRecordReferences = pgTable(
     relationship: text("relationship").notNull().default("references"),
     ...timestamps,
   },
-  (table) => ({
-    pk: primaryKey({
+  (table) => [
+    primaryKey({
       columns: [table.vulnerabilityRecordId, table.referenceId],
     }),
-  }),
+  ],
 );
