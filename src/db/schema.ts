@@ -4,6 +4,7 @@ import {
   check,
   date,
   index,
+  integer,
   jsonb,
   numeric,
   pgTable,
@@ -167,6 +168,37 @@ export const vulnerabilityRecordIdentifiers = pgTable(
   ],
 );
 
+// Source-backed non-alias relationships between a record and another public
+// identifier. Examples: OSV upstream/related and CVE rejected replacedBy.
+export const vulnerabilityRecordRelationships = pgTable(
+  "vulnerability_record_relationships",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    vulnerabilityRecordId: uuid("vulnerability_record_id")
+      .notNull()
+      .references(() => vulnerabilityRecords.id, { onDelete: "cascade" }),
+    sourceRecordId: uuid("source_record_id")
+      .notNull()
+      .references(() => sourceRecords.id, { onDelete: "cascade" }),
+    relatedIdentifierId: uuid("related_identifier_id")
+      .notNull()
+      .references(() => identifiers.id, { onDelete: "cascade" }),
+    relationship: text("relationship").notNull(),
+    raw: jsonb("raw"),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("vulnerability_record_relationships_unique_idx").on(
+      table.vulnerabilityRecordId,
+      table.relatedIdentifierId,
+      table.relationship,
+    ),
+    index("vulnerability_record_relationships_related_idx").on(
+      table.relatedIdentifierId,
+    ),
+  ],
+);
+
 // Package distribution namespace. OSV affected[].package.ecosystem is the
 // primary source for this in the MVP; examples: npm, Maven, PyPI, Ubuntu.
 export const ecosystems = pgTable(
@@ -181,6 +213,33 @@ export const ecosystems = pgTable(
     ...timestamps,
   },
   (table) => [uniqueIndex("ecosystems_slug_idx").on(table.slug)],
+);
+
+// Alternate source values that resolve to one ecosystem row. This lets CVE
+// collectionURL/PURL types and scoped OSV ecosystems point at one canonical
+// ecosystem while retaining source-specific scope.
+export const ecosystemAliases = pgTable(
+  "ecosystem_aliases",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ecosystemId: uuid("ecosystem_id")
+      .notNull()
+      .references(() => ecosystems.id, { onDelete: "cascade" }),
+    alias: text("alias").notNull(),
+    aliasKind: text("alias_kind").notNull(),
+    scope: text("scope"),
+    source: text("source"),
+    raw: jsonb("raw"),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("ecosystem_aliases_alias_idx").on(
+      table.alias,
+      table.aliasKind,
+      table.scope,
+    ),
+    index("ecosystem_aliases_ecosystem_idx").on(table.ecosystemId),
+  ],
 );
 
 // Vendor/product-level affected software. CVE containers.cna.affected[] is the
@@ -281,13 +340,20 @@ export const affectedPackages = pgTable(
     packageId: uuid("package_id")
       .notNull()
       .references(() => packages.id, { onDelete: "restrict" }),
+    sourceIndex: integer("source_index").notNull().default(0),
     relationship: text("relationship").notNull().default("affected"),
+    defaultStatus: text("default_status"),
+    platforms: jsonb("platforms"),
+    modules: jsonb("modules"),
+    repo: text("repo"),
+    raw: jsonb("raw"),
     ...timestamps,
   },
   (table) => [
-    uniqueIndex("affected_packages_record_package_idx").on(
+    uniqueIndex("affected_packages_record_package_source_idx").on(
       table.vulnerabilityRecordId,
       table.packageId,
+      table.sourceIndex,
     ),
     index("affected_packages_package_idx").on(table.packageId),
     index("affected_packages_record_idx").on(
@@ -312,12 +378,19 @@ export const versionRanges = pgTable(
       { onDelete: "cascade" },
     ),
     rangeType: text("range_type"),
+    sourceIndex: integer("source_index").notNull().default(0),
+    status: text("status"),
+    version: text("version"),
+    versionType: text("version_type"),
     introduced: text("introduced"),
     fixed: text("fixed"),
     lastAffected: text("last_affected"),
     limit: text("limit"),
+    lessThan: text("less_than"),
+    lessThanOrEqual: text("less_than_or_equal"),
     expression: text("expression"),
     repo: text("repo"),
+    changes: jsonb("changes"),
     raw: jsonb("raw"),
     ...timestamps,
   },
@@ -349,15 +422,63 @@ export const affectedProducts = pgTable(
     productId: uuid("product_id")
       .notNull()
       .references(() => products.id, { onDelete: "restrict" }),
+    sourceIndex: integer("source_index").notNull().default(0),
     relationship: text("relationship").notNull().default("affected"),
+    defaultStatus: text("default_status"),
+    platforms: jsonb("platforms"),
+    modules: jsonb("modules"),
+    programFiles: jsonb("program_files"),
+    programRoutines: jsonb("program_routines"),
+    repo: text("repo"),
+    raw: jsonb("raw"),
     ...timestamps,
   },
   (table) => [
-    uniqueIndex("affected_products_record_product_idx").on(
+    uniqueIndex("affected_products_record_product_source_idx").on(
       table.vulnerabilityRecordId,
       table.productId,
+      table.sourceIndex,
     ),
     index("affected_products_product_idx").on(table.productId),
+    index("affected_products_record_idx").on(table.vulnerabilityRecordId),
+  ],
+);
+
+// Source-backed identifiers attached to a specific affected edge. Examples:
+// CPEs, PURLs, CVE packageURL, and CVE collectionURL/packageName pairs.
+export const affectedSoftwareIdentifiers = pgTable(
+  "affected_software_identifiers",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    affectedPackageId: uuid("affected_package_id").references(
+      () => affectedPackages.id,
+      { onDelete: "cascade" },
+    ),
+    affectedProductId: uuid("affected_product_id").references(
+      () => affectedProducts.id,
+      { onDelete: "cascade" },
+    ),
+    kind: text("kind").notNull(),
+    value: text("value").notNull(),
+    sourceField: text("source_field"),
+    raw: jsonb("raw"),
+    ...timestamps,
+  },
+  (table) => [
+    index("affected_software_identifiers_package_idx").on(
+      table.affectedPackageId,
+    ),
+    index("affected_software_identifiers_product_idx").on(
+      table.affectedProductId,
+    ),
+    index("affected_software_identifiers_kind_value_idx").on(
+      table.kind,
+      table.value,
+    ),
+    check(
+      "affected_software_identifiers_one_target_chk",
+      sql`(${table.affectedPackageId} is not null and ${table.affectedProductId} is null) or (${table.affectedPackageId} is null and ${table.affectedProductId} is not null)`,
+    ),
   ],
 );
 
@@ -412,9 +533,18 @@ export const severityMetrics = pgTable(
       .references(() => sourceRecords.id, { onDelete: "cascade" }),
     provider: text("provider"),
     system: text("system").notNull(),
+    affectedPackageId: uuid("affected_package_id").references(
+      () => affectedPackages.id,
+      { onDelete: "set null" },
+    ),
+    affectedProductId: uuid("affected_product_id").references(
+      () => affectedProducts.id,
+      { onDelete: "set null" },
+    ),
     score: numeric("score", { precision: 4, scale: 1 }),
     severity: text("severity"),
     vector: text("vector"),
+    raw: jsonb("raw"),
     ...timestamps,
   },
   (table) => [
@@ -425,6 +555,12 @@ export const severityMetrics = pgTable(
       table.sourceRecordId,
     ),
     index("severity_metrics_system_idx").on(table.system),
+    index("severity_metrics_affected_package_idx").on(
+      table.affectedPackageId,
+    ),
+    index("severity_metrics_affected_product_idx").on(
+      table.affectedProductId,
+    ),
   ],
 );
 
@@ -446,6 +582,7 @@ export const cvssMetricDetails = pgTable(
     confidentialityImpact: text("confidentiality_impact"),
     integrityImpact: text("integrity_impact"),
     availabilityImpact: text("availability_impact"),
+    raw: jsonb("raw"),
     ...timestamps,
   },
   (table) => [
@@ -588,6 +725,9 @@ export const vulnerabilityRecordReferences = pgTable(
       .notNull()
       .references(() => externalReferences.id, { onDelete: "cascade" }),
     relationship: text("relationship").notNull().default("references"),
+    sourceName: text("source_name"),
+    tags: jsonb("tags"),
+    raw: jsonb("raw"),
     ...timestamps,
   },
   (table) => [

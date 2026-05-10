@@ -247,6 +247,21 @@ Current likely ingestion order:
 5. Ingest FIRST EPSS for probability scores.
 6. Reconcile records into canonical vulnerabilities through identifiers.
 
+Current implemented ingestion commands:
+
+```bash
+bun run ingest:seed
+bun run ingest:cve -- --dir RESOURCES/cvelistV5-main/cves
+bun run ingest -- osv --dir /path/to/osv/json
+bun run ingest -- kev --file /path/to/known_exploited_vulnerabilities.json
+bun run ingest -- epss --file /path/to/epss_scores.csv --date YYYY-MM-DD
+```
+
+The local CVE List V5 checkout in `RESOURCES/cvelistV5-main/cves` is the first
+real corpus for the pipeline. The CVE importer preserves rejected records,
+affected product/package rows, CPE/PURL/package identifiers, version status
+objects, CVSS, SSVC, CISA ADP KEV hints, weaknesses, and references.
+
 ## Stack
 
 - Runtime/package manager: Bun
@@ -297,6 +312,14 @@ Typecheck:
 
 ```bash
 bun run typecheck
+```
+
+Run the first local ingestion slice:
+
+```bash
+bun run db:migrate
+bun run ingest:seed
+bun run ingest:cve -- --dir RESOURCES/cvelistV5-main/cves --limit 100
 ```
 
 ## Agent Reading Order

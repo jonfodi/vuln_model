@@ -1,0 +1,1 @@
+ALTER TABLE "affected_software_identifiers" ADD COLUMN "source_field" text;

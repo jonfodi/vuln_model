@@ -18,23 +18,26 @@ These tables represent facts we expect to extract from OSV, CVE List, CISA KEV, 
 | `source_records` | One raw external record from a source. | OSV vulnerability JSON, CVE 5.x record, KEV entry, EPSS row/batch item. |
 | `vulnerability_records` | Our normalized record-level view of one source record. | OSV `id`, CVE `cveMetadata.cveId`, advisory summary/details/timestamps/status. |
 | `identifiers` | External IDs used to find/group vulnerabilities. | `CVE-*`, `GHSA-*`, OSV IDs, distro advisory IDs. |
-| `vulnerability_record_identifiers` | IDs present on a specific source record. | OSV `id`, `aliases`, `upstream`; CVE `cveMetadata.cveId`. |
+| `vulnerability_record_identifiers` | IDs present on a specific source record. | OSV `id`, `aliases`; CVE `cveMetadata.cveId`. |
+| `vulnerability_record_relationships` | Non-alias relationships from one source record to another identifier. | OSV `upstream` / `related`, CVE `replacedBy`. |
 | `vulnerability_identifiers` | IDs attached to our canonical vulnerability after clustering. | Derived from record identifiers after reconciliation. |
 | `products` | Vendor/product-level affected software. | CVE `containers.cna.affected[].vendor/product`. |
-| `packages` | Installable package in an ecosystem. | OSV `affected[].package.name` and `purl`. |
+| `packages` | Installable package in an ecosystem. | OSV `affected[].package.name` and `purl`; CVE 5.2 package fields when present. |
 | `ecosystems` | Package namespace/distribution context. | OSV `affected[].package.ecosystem`; examples: npm, Maven, PyPI, Ubuntu. |
-| `affected_products` | Source record says this product is affected. | CVE `containers.cna.affected[]`. |
-| `affected_packages` | Source record says this package is affected. | OSV `affected[]`. |
-| `version_ranges` | Affected/fixed version logic for an affected product or package. | OSV `affected[].ranges/events`, OSV `versions[]`, CVE `affected[].versions`. |
+| `ecosystem_aliases` | Source-specific ecosystem names, PURL types, and collection URLs mapped to one canonical ecosystem. | OSV scoped ecosystem strings, CVE `collectionURL`, PURL type. |
+| `affected_products` | Source record says this product is affected or unaffected, preserving source row context. | CVE `containers.cna.affected[]`. |
+| `affected_packages` | Source record says this package is affected or unaffected, preserving source row context. | OSV `affected[]`; CVE `packageName` / `packageURL` when present. |
+| `affected_software_identifiers` | Source-backed identifiers attached to one affected edge, with the source field preserved. | CPEs, PURLs, package names, collection URLs. |
+| `version_ranges` | Affected/fixed version logic for an affected product or package. | OSV `affected[].ranges/events`, OSV `versions[]`, CVE `affected[].versions`, including `lessThan`, `lessThanOrEqual`, `changes`. |
 | `weaknesses` | CWE weakness classes. | CVE `problemTypes[].descriptions[].cweId` or CWE-like descriptions. |
 | `vulnerability_record_weaknesses` | Source record asserts a CWE for the vuln. | CVE problem types, later GHSA/NVD CWE facts. |
-| `severity_metrics` | CVSS/vendor/GitHub/OSV severity facts. | CVE `metrics[]`, CVE ADP metrics, OSV `severity[]`, GHSA severity later. |
-| `cvss_metric_details` | Parsed CVSS exploitability and impact fields. | Mechanical parse of `severity_metrics.vector`. |
+| `severity_metrics` | CVSS/vendor/GitHub/OSV severity facts. | CVE `metrics[]`, CVE ADP metrics, OSV top-level and affected-package `severity[]`, GHSA severity later. |
+| `cvss_metric_details` | Parsed CVSS exploitability and impact fields plus raw parsed metric details. | Mechanical parse of `severity_metrics.vector`. |
 | `ssvc_assessments` | CISA SSVC prioritization context. | CVE `containers.adp[].metrics[].other.type = "ssvc"`. |
 | `kev_entries` | CISA says a CVE is known exploited. | CISA KEV catalog fields. |
 | `epss_scores` | Exploitation probability score by CVE/date. | FIRST EPSS `cve`, `epss`, `percentile`, `date`. |
 | `external_references` | External URLs used as evidence. | OSV references, CVE references, advisory links, release notes, issues. |
-| `vulnerability_record_references` | Source record references a URL. | Record-level evidence links. |
+| `vulnerability_record_references` | Source record references a URL with source-specific tags. | Record-level evidence links, CVE reference `tags`, OSV reference `type`. |
 
 ## Canonical/Derived Tables
 
@@ -96,7 +99,9 @@ source_records
 vulnerability_records
 identifiers
 vulnerability_record_identifiers
+vulnerability_record_relationships
 ecosystems
+ecosystem_aliases
 packages
 affected_packages
 version_ranges
@@ -111,12 +116,14 @@ Important fields:
 id
 aliases
 upstream
+related
 affected[].package.ecosystem
 affected[].package.name
 affected[].package.purl
 affected[].ranges
 affected[].versions
 severity[]
+affected[].severity[]
 references[]
 published / modified / withdrawn
 ```
@@ -133,7 +140,10 @@ vulnerability_records
 identifiers
 vulnerability_record_identifiers
 products
+packages when CVE 5.2 package fields are present
 affected_products
+affected_packages when CVE 5.2 package fields are present
+affected_software_identifiers
 version_ranges
 weaknesses
 vulnerability_record_weaknesses
@@ -151,11 +161,15 @@ cveMetadata.cveId
 cveMetadata.state
 cveMetadata.datePublished / dateUpdated
 containers.cna.affected[]
+containers.cna.affected[].packageName / collectionURL / packageURL / cpes / platforms / modules
+containers.cna.affected[].versions[].lessThan / lessThanOrEqual / changes
 containers.cna.problemTypes[]
 containers.cna.descriptions[]
 containers.cna.metrics[]
 containers.cna.references[]
 containers.adp[].metrics[]
+containers.adp[].metrics[].other.type = "kev"
+containers.cna.replacedBy
 ```
 
 ### CISA KEV
@@ -216,6 +230,25 @@ date
 6. CVSS-derived fields in `cvss_metric_details` are source-backed only because they are parsed from a source vector.
 7. KEV means known exploited. EPSS means predicted exploitation likelihood. These are different signals.
 8. `package_products` is enrichment, not vulnerability truth.
+9. CVE `packageName` / `packageURL` can create source-backed package affectedness, but product-to-package links remain enrichment.
+10. OSV `upstream` and CVE `replacedBy` are relationships, not aliases, unless another source explicitly says they identify the same vulnerability.
+
+## Implemented Ingestion Commands
+
+The current TypeScript ingestion layer lives in `src/ingest`.
+
+```bash
+bun run ingest:seed
+bun run ingest:cve -- --dir RESOURCES/cvelistV5-main/cves
+bun run ingest -- osv --dir /path/to/osv/json
+bun run ingest -- kev --file /path/to/known_exploited_vulnerabilities.json
+bun run ingest -- epss --file /path/to/epss_scores.csv --date YYYY-MM-DD
+```
+
+Each connector is idempotent at the source-record level. Before a record is
+normalized again, source-backed child facts for that `vulnerability_record` are
+cleared and rebuilt while global entities such as identifiers, packages,
+products, ecosystems, and references are upserted.
 
 ## Deliberately Not Modeled Yet
 

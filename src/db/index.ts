@@ -16,3 +16,12 @@ export function getDb() {
   return drizzle(client, { schema });
 }
 
+export async function closeDb() {
+  if (!client) {
+    return;
+  }
+
+  const currentClient = client;
+  client = undefined;
+  await currentClient.end();
+}
