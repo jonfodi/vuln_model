@@ -205,7 +205,16 @@ export async function linkVulnerabilityIdentifier(
   await db
     .insert(schema.vulnerabilityIdentifiers)
     .values({ vulnerabilityId, identifierId, relationship })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: [
+        schema.vulnerabilityIdentifiers.vulnerabilityId,
+        schema.vulnerabilityIdentifiers.identifierId,
+      ],
+      set: {
+        relationship,
+        updatedAt: sql`now()`,
+      },
+    });
 }
 
 export async function linkVulnerabilityRecordIdentifier(
@@ -217,7 +226,16 @@ export async function linkVulnerabilityRecordIdentifier(
   await db
     .insert(schema.vulnerabilityRecordIdentifiers)
     .values({ vulnerabilityRecordId, identifierId, relationship })
-    .onConflictDoNothing();
+    .onConflictDoUpdate({
+      target: [
+        schema.vulnerabilityRecordIdentifiers.vulnerabilityRecordId,
+        schema.vulnerabilityRecordIdentifiers.identifierId,
+      ],
+      set: {
+        relationship,
+        updatedAt: sql`now()`,
+      },
+    });
 }
 
 export async function upsertVulnerabilityRecordRelationship(
@@ -650,8 +668,12 @@ export async function upsertWeakness(
     .onConflictDoUpdate({
       target: schema.weaknesses.cweId,
       set: {
-        name: values.name ?? null,
-        description: values.description ?? null,
+        name:
+          values.name == null ? sql`${schema.weaknesses.name}` : values.name,
+        description:
+          values.description == null
+            ? sql`${schema.weaknesses.description}`
+            : values.description,
         updatedAt: sql`now()`,
       },
     })
@@ -892,8 +914,14 @@ export async function upsertExternalReference(
     .onConflictDoUpdate({
       target: schema.externalReferences.url,
       set: {
-        title: values.title ?? null,
-        kind: values.kind ?? null,
+        title:
+          values.title == null
+            ? sql`${schema.externalReferences.title}`
+            : values.title,
+        kind:
+          values.kind == null
+            ? sql`${schema.externalReferences.kind}`
+            : values.kind,
         updatedAt: sql`now()`,
       },
     })

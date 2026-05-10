@@ -1,8 +1,6 @@
 import { closeDb, getDb } from "../db";
-import { ingestCveDirectory } from "./cve";
-import { ingestEpssCsv } from "./epss";
-import { ingestKevFile } from "./kev";
-import { ingestOsvDirectory } from "./osv";
+import { getSourceAdapter } from "./adapters";
+import { ingestSource } from "./orchestrator";
 import { seedReferenceData } from "./seed";
 
 type Args = Record<string, string | boolean>;
@@ -24,7 +22,7 @@ async function main() {
 
       case "cve": {
         const db = getDb();
-        const result = await ingestCveDirectory(db, {
+        const result = await ingestSource(db, getSourceAdapter("cve"), {
           dir: stringArg(args, "dir") ?? DEFAULT_CVE_DIR,
           limit: numberArg(args, "limit"),
           progressEvery: numberArg(args, "progress-every"),
@@ -36,7 +34,7 @@ async function main() {
       case "osv": {
         const db = getDb();
         const dir = requiredStringArg(args, "dir", "osv requires --dir");
-        const result = await ingestOsvDirectory(db, {
+        const result = await ingestSource(db, getSourceAdapter("osv"), {
           dir,
           limit: numberArg(args, "limit"),
           progressEvery: numberArg(args, "progress-every"),
@@ -48,7 +46,10 @@ async function main() {
       case "kev": {
         const db = getDb();
         const file = requiredStringArg(args, "file", "kev requires --file");
-        const result = await ingestKevFile(db, { file });
+        const result = await ingestSource(db, getSourceAdapter("kev"), {
+          file,
+          progressEvery: numberArg(args, "progress-every"),
+        });
         console.log(JSON.stringify(result, null, 2));
         return;
       }
@@ -56,9 +57,10 @@ async function main() {
       case "epss": {
         const db = getDb();
         const file = requiredStringArg(args, "file", "epss requires --file");
-        const result = await ingestEpssCsv(db, {
+        const result = await ingestSource(db, getSourceAdapter("epss"), {
           file,
           date: stringArg(args, "date"),
+          progressEvery: numberArg(args, "progress-every"),
         });
         console.log(JSON.stringify(result, null, 2));
         return;

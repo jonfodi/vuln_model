@@ -35,6 +35,15 @@ export const SOURCE_SEEDS: SourceSeed[] = [
   },
 ];
 
+export function sourceSeedForSlug(slug: string) {
+  const seed = SOURCE_SEEDS.find((source) => source.slug === slug);
+  if (!seed) {
+    throw new Error(`Unknown ingestion source: ${slug}`);
+  }
+
+  return seed;
+}
+
 export async function seedReferenceData(db: IngestDb) {
   for (const source of SOURCE_SEEDS) {
     await upsertSource(db, source);
