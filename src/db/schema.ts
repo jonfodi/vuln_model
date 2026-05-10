@@ -273,6 +273,8 @@ export const packageVersions = pgTable(
   }),
 );
 
+// Source-backed package affectedness. OSV affected[] is the primary MVP source:
+// each affected package row can have one or more versionRanges.
 export const affectedPackages = pgTable(
   "affected_packages",
   {
@@ -338,6 +340,9 @@ export const versionRanges = pgTable(
   }),
 );
 
+// Source-backed product affectedness. CVE containers.cna.affected[] is the
+// primary MVP source: each affected product row can have one or more
+// versionRanges.
 export const affectedProducts = pgTable(
   "affected_products",
   {
