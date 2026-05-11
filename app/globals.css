@@ -251,7 +251,7 @@ main {
   padding: var(--space-6) 0 var(--space-8);
   align-content: center;
   justify-items: center;
-  text-align: center;
+  text-align: left;
 }
 
 main.has-results .search-hero {
