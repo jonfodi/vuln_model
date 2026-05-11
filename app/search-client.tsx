@@ -176,26 +176,24 @@ export function SearchClient() {
           </div>
 
           <form className="search-form" onSubmit={onSubmit} role="search">
-            <div className="search-panel">
-              <label className="visually-hidden" htmlFor="query">
-                Investigate a package, product, version, or advisory
-              </label>
-              <div className="query-control">
-                <input
-                  ref={inputRef}
-                  id="query"
-                  name="query"
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Log4Shell, Next.js, Chrome known exploited, npm:next"
-                  autoComplete="off"
-                  spellCheck={false}
-                />
-                <button className="visually-hidden" type="submit">
-                  Search
-                </button>
-              </div>
+            <label className="visually-hidden" htmlFor="query">
+              Investigate vulnerabilities in your software
+            </label>
+            <div className="query-control">
+              <input
+                ref={inputRef}
+                id="query"
+                name="query"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Investigate vulnerabilities in your software"
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <button className="visually-hidden" type="submit">
+                Search
+              </button>
             </div>
           </form>
         </section>

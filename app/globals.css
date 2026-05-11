@@ -328,48 +328,32 @@ main.has-results .hero-text {
 
 .search-form {
   display: block;
-  width: min(840px, 100%);
-}
-
-.search-panel {
-  width: 100%;
+  width: min(760px, 100%);
 }
 
 .query-control {
   display: grid;
-  min-height: 88px;
-  padding: 0.5rem;
-  border: 1px solid var(--divider-strong);
-  border-radius: var(--radius-md);
-  background:
-    linear-gradient(180deg, color-mix(in oklch, var(--surface-raised) 88%, var(--accent-soft)), color-mix(in oklch, var(--surface-page-deep) 68%, var(--surface-panel)));
-  box-shadow:
-    0 28px 80px color-mix(in oklch, var(--surface-page-deep) 78%, transparent),
-    inset 0 1px 0 color-mix(in oklch, var(--ink) 9%, transparent);
+  min-height: 76px;
+  border-bottom: 1px solid var(--divider-strong);
   transition:
     border-color 180ms ease,
-    box-shadow 180ms ease,
-    background-color 180ms ease;
+    opacity 180ms ease;
 }
 
 .query-control:focus-within {
   border-color: var(--accent);
-  background: color-mix(in oklch, var(--surface-page-deep) 52%, var(--surface-panel));
-  box-shadow:
-    0 30px 90px color-mix(in oklch, var(--surface-page-deep) 82%, transparent),
-    0 0 0 3px color-mix(in oklch, var(--accent) 22%, transparent),
-    inset 0 1px 0 color-mix(in oklch, var(--ink) 9%, transparent);
 }
 
 .query-control input {
   min-width: 0;
-  min-height: 68px;
+  min-height: 76px;
   border: 0;
-  padding: 0 var(--space-5);
+  padding: 0;
   background: transparent;
   color: var(--ink);
-  font-size: 1.18rem;
+  font-size: 1.3rem;
   outline: 0;
+  text-align: center;
 }
 
 .query-control input::placeholder {
