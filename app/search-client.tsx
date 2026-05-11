@@ -167,17 +167,17 @@ export function SearchClient() {
       <main id="main-content" className={hasSearched ? "has-results" : undefined}>
         <section className="search-hero" aria-labelledby="page-title">
           <div className="hero-copy">
-            <p className="eyebrow">Evidence-backed vulnerability intelligence</p>
-            <h1 id="page-title">Software risk, decoded.</h1>
+            <p className="eyebrow">Source-backed vulnerability search</p>
+            <h1 id="page-title">Check what's affected.</h1>
             <p className="hero-text">
-              Search packages, products, versions, and advisories. See affected
-              software, fixes, exploitation signals, and source evidence in one view.
+              Search CVEs, packages, products, versions, and advisories. Review
+              fixes, exploitability signals, and source records in one view.
             </p>
           </div>
 
           <form className="search-form" onSubmit={onSubmit} role="search">
             <label className="visually-hidden" htmlFor="query">
-              Investigate vulnerabilities in your software
+              Search vulnerability records
             </label>
             <div className="query-control">
               <span className="search-icon" aria-hidden="true" />
