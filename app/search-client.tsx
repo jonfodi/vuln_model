@@ -180,6 +180,7 @@ export function SearchClient() {
               Investigate vulnerabilities in your software
             </label>
             <div className="query-control">
+              <span className="search-icon" aria-hidden="true" />
               <input
                 ref={inputRef}
                 id="query"

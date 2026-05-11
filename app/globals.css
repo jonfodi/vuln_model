@@ -333,6 +333,9 @@ main.has-results .hero-text {
 
 .query-control {
   display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--space-3);
   min-height: 76px;
   border-bottom: 1px solid var(--divider-strong);
   transition:
@@ -344,6 +347,41 @@ main.has-results .hero-text {
   border-color: var(--accent);
 }
 
+.search-icon {
+  position: relative;
+  width: 1.1rem;
+  height: 1.1rem;
+  justify-self: center;
+  color: var(--ink-muted);
+}
+
+.search-icon::before,
+.search-icon::after {
+  position: absolute;
+  content: "";
+}
+
+.search-icon::before {
+  inset: 0;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
+
+.search-icon::after {
+  right: -0.28rem;
+  bottom: -0.18rem;
+  width: 0.55rem;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform: rotate(45deg);
+  transform-origin: center;
+}
+
+.query-control:focus-within .search-icon {
+  color: var(--accent);
+}
+
 .query-control input {
   min-width: 0;
   min-height: 76px;
@@ -353,7 +391,7 @@ main.has-results .hero-text {
   color: var(--ink);
   font-size: 1.3rem;
   outline: 0;
-  text-align: center;
+  text-align: left;
 }
 
 .query-control input::placeholder {
