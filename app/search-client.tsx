@@ -167,11 +167,11 @@ export function SearchClient() {
       <main id="main-content" className={hasSearched ? "has-results" : undefined}>
         <section className="search-hero" aria-labelledby="page-title">
           <div className="hero-copy">
-            <p className="eyebrow">Source-backed vulnerability search</p>
-            <h1 id="page-title">Check what's affected.</h1>
+            <p className="eyebrow">Software issue search</p>
+            <h1 id="page-title">Find software risks.</h1>
             <p className="hero-text">
-              Search CVEs, packages, products, versions, and advisories. Review
-              fixes, exploitability signals, and source records in one view.
+              Search by name or version. See what may be unsafe, what has been
+              fixed, and where the information came from.
             </p>
           </div>
 
@@ -188,7 +188,7 @@ export function SearchClient() {
                 type="search"
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder="Investigate vulnerabilities in your software"
+                placeholder="Search your software to get started"
                 autoComplete="off"
                 spellCheck={false}
               />
