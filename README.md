@@ -264,6 +264,7 @@ objects, CVSS, SSVC, CISA ADP KEV hints, weaknesses, and references.
 
 ## Stack
 
+- App framework: Next.js
 - Runtime/package manager: Bun
 - Language: TypeScript
 - Database: Postgres
@@ -314,17 +315,18 @@ Typecheck:
 bun run typecheck
 ```
 
-Start the API:
+Start the Next.js app:
 
 ```bash
-bun run api:dev
+bun run dev
 ```
 
-Bun handles `--port`, `BUN_PORT`, `PORT`, and `NODE_PORT` when the server does
-not set an explicit port. The API exposes:
+The app exposes:
 
 ```bash
+GET /
 GET /health
+GET /api/health
 POST /api/search
 GET /api/search?q=log4j
 ```

@@ -2,8 +2,11 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": [
+      "dom",
+      "dom.iterable",
       "es2022"
     ],
+    "jsx": "react-jsx",
     "allowJs": false,
     "skipLibCheck": true,
     "strict": true,
@@ -21,12 +24,21 @@
     },
     "types": [
       "bun"
+    ],
+    "plugins": [
+      {
+        "name": "next"
+      }
     ]
   },
   "include": [
-    "api/**/*.ts",
+    "next-env.d.ts",
+    ".next/types/**/*.ts",
+    "app/**/*.ts",
+    "app/**/*.tsx",
     "drizzle.config.ts",
-    "src/**/*.ts"
+    "src/**/*.ts",
+    ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"
