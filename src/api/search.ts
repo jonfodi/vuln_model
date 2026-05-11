@@ -230,6 +230,7 @@ async function findPackageCandidates(
   limit: number,
 ) {
   const like = likePattern(input.packageName);
+  const ecosystem = input.ecosystem ?? null;
 
   return db.execute<CandidateRow>(sql`
     select
@@ -244,7 +245,7 @@ async function findPackageCandidates(
         else 'medium'
       end as confidence,
       case
-        when ${input.ecosystem ?? null} is not null and e.slug = ${input.ecosystem ?? null} and lower(p.name) = lower(${input.packageName}) then 0
+        when ${ecosystem}::text is not null and e.slug = ${ecosystem}::text and lower(p.name) = lower(${input.packageName}) then 0
         when lower(p.name) = lower(${input.packageName}) then 1
         when p.purl ilike ${like} then 2
         else 5

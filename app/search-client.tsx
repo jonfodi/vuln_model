@@ -23,24 +23,7 @@ const SAMPLE_QUERIES = [
   "known exploited chrome",
 ];
 
-const SOURCES = [
-  {
-    name: "CVE List V5",
-    description: "Product facts, descriptions, CWE, CVSS, ADP enrichment",
-  },
-  {
-    name: "OSV",
-    description: "Package, ecosystem, affected and fixed ranges",
-  },
-  {
-    name: "CISA KEV",
-    description: "Known exploitation signal",
-  },
-  {
-    name: "FIRST EPSS",
-    description: "Exploit probability and percentile",
-  },
-];
+const SOURCE_NAMES = "CVE List, OSV, CISA KEV, FIRST EPSS";
 
 export function SearchClient() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +38,9 @@ export function SearchClient() {
       0,
     );
   }, [state.data]);
+
+  const hasSearched = state.status !== "idle";
+  const displayedQuery = state.data?.query ?? query.trim();
 
   useEffect(() => {
     void checkHealth(setApiState);
@@ -82,7 +68,7 @@ export function SearchClient() {
       }
 
       event.preventDefault();
-      inputRef.current?.focus();
+      focusSearch();
     }
 
     document.addEventListener("keydown", onKeyDown);
@@ -97,9 +83,9 @@ export function SearchClient() {
     if (!trimmed) {
       setState({
         status: "error",
-        error: "Please enter a vulnerability, package, product, weakness, or version.",
+        error: "Enter a CVE, package, product, CWE, or version.",
       });
-      inputRef.current?.focus();
+      focusSearch();
       return;
     }
 
@@ -127,7 +113,7 @@ export function SearchClient() {
           typeof body.message === "string"
             ? body.message
             : "Search failed.";
-        setState({ status: "error", error: message });
+        setState({ status: "error", data: state.data, error: message });
         return;
       }
 
@@ -135,6 +121,7 @@ export function SearchClient() {
     } catch (error) {
       setState({
         status: "error",
+        data: state.data,
         error:
           error instanceof Error
             ? error.message
@@ -148,11 +135,16 @@ export function SearchClient() {
     void submitSearch();
   }
 
-  function clearSearch() {
+  function focusSearch() {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }
+
+  function resetSearch() {
     setQuery("");
     setState({ status: "idle" });
     window.history.replaceState({}, "", window.location.pathname);
-    inputRef.current?.focus();
+    window.setTimeout(focusSearch, 0);
   }
 
   async function copyIdentifier(identifier: string, rowId: string) {
@@ -174,78 +166,54 @@ export function SearchClient() {
       <header className="site-header" aria-label="Primary">
         <a className="brand" href="/" aria-label="Vulnerability Intelligence home">
           <span className="brand-mark" aria-hidden="true" />
-          <span className="brand-copy">
-            <span className="brand-name">Vulnerability Intelligence</span>
-            <span className="brand-subtitle">Evidence-first search</span>
-          </span>
+          <span className="brand-name">Vulnerability Intelligence</span>
         </a>
-        <nav className="nav-links" aria-label="Product">
-          <a href="#sources">Sources</a>
-          <a href="#model">Model</a>
+        <div className="header-actions">
           <a href="/api/search?q=log4j">API</a>
-        </nav>
+          <ApiBadge state={apiState} />
+        </div>
       </header>
 
-      <main id="main-content">
-        <section className="hero" aria-labelledby="page-title">
+      <main id="main-content" className={hasSearched ? "has-results" : undefined}>
+        <section className="search-hero" aria-labelledby="page-title">
           <div className="hero-copy">
             <p className="eyebrow">Public vulnerability intelligence</p>
-            <h1 id="page-title">Search public vulnerability intelligence.</h1>
+            <h1 id="page-title">Search vulnerability records.</h1>
             <p className="hero-text">
-              Find affected software, fixed versions, exploitability signals, and
-              source records behind the facts.
+              Find affected software, fixed versions, exploit signals, and source
+              evidence across {SOURCE_NAMES}.
             </p>
           </div>
 
-          <aside className="source-ledger" id="sources" aria-labelledby="sources-title">
-            <div className="rail-heading">
-              <p className="eyebrow">Source ledger</p>
-              <ApiBadge state={apiState} />
+          <form className="search-form" onSubmit={onSubmit} role="search">
+            <label htmlFor="query">Search by CVE, package, product, CWE, or version</label>
+            <div className="query-control">
+              <input
+                ref={inputRef}
+                id="query"
+                name="query"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="CVE-2021-44228, log4j 2.14.1, npm:next, CWE-79"
+                autoComplete="off"
+                spellCheck={false}
+                aria-describedby="query-help"
+              />
+              <button
+                className="primary-action"
+                type="submit"
+                disabled={state.status === "loading"}
+              >
+                {state.status === "loading" ? "Searching" : "Search"}
+              </button>
             </div>
-            <h2 id="sources-title">Signals stay distinct.</h2>
-            <div className="source-list" aria-label="Supported sources">
-              {SOURCES.map((source) => (
-                <div className="source-item" key={source.name}>
-                  <span>{source.name}</span>
-                  <small>{source.description}</small>
-                </div>
-              ))}
-            </div>
-          </aside>
-        </section>
+            <p id="query-help" className="field-note">
+              Public records only. Environment-specific exposure requires asset context.
+            </p>
+          </form>
 
-        <section className="search-workspace" aria-label="Search workspace">
-          <div className="search-panel">
-            <form className="search-form" onSubmit={onSubmit} role="search">
-              <label htmlFor="query">
-                Search by CVE, GHSA, package, product, CWE, or version
-              </label>
-              <div className="query-control">
-                <input
-                  ref={inputRef}
-                  id="query"
-                  name="query"
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Try CVE-2021-44228, log4j 2.14.1, npm:next, or CWE-79"
-                  autoComplete="off"
-                  spellCheck={false}
-                  aria-describedby="query-help"
-                />
-                <button
-                  className="primary-action"
-                  type="submit"
-                  disabled={state.status === "loading"}
-                >
-                  {state.status === "loading" ? "Searching" : "Search"}
-                </button>
-              </div>
-              <p id="query-help" className="field-note">
-                Version queries show source-backed ranges, not asset claims.
-              </p>
-            </form>
-
+          {!hasSearched ? (
             <div className="example-bar" aria-label="Example searches">
               {SAMPLE_QUERIES.map((sample) => (
                 <button
@@ -258,27 +226,34 @@ export function SearchClient() {
                 </button>
               ))}
             </div>
-          </div>
+          ) : null}
+        </section>
 
+        {hasSearched ? (
           <section
-            className="results-panel"
+            className="results-region"
             aria-live="polite"
             aria-busy={state.status === "loading"}
             aria-labelledby="results-title"
           >
             <div className="results-head">
               <div>
-                <p className="eyebrow">Search response</p>
-                <h2 id="results-title">Evidence desk</h2>
+                <p className="eyebrow">Results</p>
+                <h2 id="results-title">
+                  {resultsHeading(state, resultCount, displayedQuery)}
+                </h2>
               </div>
-              {state.status !== "idle" ? (
-                <button className="ghost-action" type="button" onClick={clearSearch}>
-                  Clear
+              <div className="results-actions">
+                <button className="text-action" type="button" onClick={focusSearch}>
+                  Run another search <kbd>/</kbd>
                 </button>
-              ) : null}
+                <button className="ghost-action" type="button" onClick={resetSearch}>
+                  Reset
+                </button>
+              </div>
             </div>
 
-            <StatusMessage state={state} query={query} />
+            <StatusMessage state={state} query={displayedQuery} />
             <SearchResults
               state={state}
               resultCount={resultCount}
@@ -286,39 +261,7 @@ export function SearchClient() {
               onCopy={copyIdentifier}
             />
           </section>
-        </section>
-
-        <section className="model-section" id="model" aria-labelledby="model-title">
-          <div className="section-intro">
-            <p className="eyebrow">Model boundary</p>
-            <h2 id="model-title">It answers what public records support.</h2>
-          </div>
-          <div className="model-grid">
-            <article>
-              <h3>What it can say</h3>
-              <p>
-                This product or package is affected according to source records.
-                These fixed versions, severity metrics, KEV, EPSS, and references
-                support that answer.
-              </p>
-            </article>
-            <article>
-              <h3>What it will not say yet</h3>
-              <p>
-                Your asset is vulnerable. Customer assets, repositories, SBOMs,
-                scanners, identities, and runtime context are intentionally outside
-                this MVP.
-              </p>
-            </article>
-            <article>
-              <h3>Why the graph matters</h3>
-              <p>
-                CVE, GHSA, OSV, and distro identifiers resolve into one canonical
-                vulnerability while preserving the source records behind each fact.
-              </p>
-            </article>
-          </div>
-        </section>
+        ) : null}
       </main>
     </>
   );
@@ -326,7 +269,7 @@ export function SearchClient() {
 
 function ApiBadge({ state }: { state: ApiState }) {
   const label =
-    state === "ready" ? "API ready" : state === "offline" ? "API offline" : "Checking API";
+    state === "ready" ? "Ready" : state === "offline" ? "Offline" : "Checking";
 
   return (
     <div className="api-state" data-state={state}>
@@ -344,22 +287,14 @@ function StatusMessage({
   query: string;
 }) {
   if (state.status === "loading") {
-    return (
-      <p className="message">
-        Searching source-backed records for &quot;{query}&quot;...
-      </p>
-    );
+    return <p className="message">Searching &quot;{query}&quot;...</p>;
   }
 
   if (state.status === "error") {
-    return (
-      <p className="message message-error">
-        {state.error}. Check the database connection and try again.
-      </p>
-    );
+    return <p className="message message-error">{state.error}</p>;
   }
 
-  return <p className="message" aria-hidden="true" />;
+  return null;
 }
 
 function SearchResults({
@@ -373,28 +308,8 @@ function SearchResults({
   copiedId: string | null;
   onCopy: (identifier: string, rowId: string) => void;
 }) {
-  if (state.status === "idle") {
-    return (
-      <EmptyState
-        kicker="Ready for a query"
-        title="Start with an identifier, package, product, weakness, or version."
-        body="Results will show the API interpretation, source-backed caveats, exploitability signals, affected software, and evidence counts."
-      />
-    );
-  }
-
   if (state.status === "loading") {
     return <LoadingState />;
-  }
-
-  if (state.status === "error" && !state.data) {
-    return (
-      <EmptyState
-        kicker="Search unavailable"
-        title="The interface is ready, but the API did not return results."
-        body="Try a sample query again once the database connection is available."
-      />
-    );
   }
 
   const data = state.data;
@@ -402,11 +317,7 @@ function SearchResults({
     return (
       <>
         {data ? <ResponseContext response={data} /> : null}
-        <EmptyState
-          kicker="No source-backed match"
-          title="No vulnerability records matched this query."
-          body="Try a CVE, GHSA, package URL, ecosystem package shorthand, product name, or CWE identifier."
-        />
+        <EmptyState />
       </>
     );
   }
@@ -414,47 +325,33 @@ function SearchResults({
   return (
     <>
       <ResponseContext response={data} />
-      {data.sections.map((section) => (
-        <section className="result-section" key={section.key}>
-          <div className="section-title-row">
-            <div>
-              <h3>{section.title}</h3>
-              <p>{section.reason}</p>
-            </div>
-            <span className="confidence">{section.results.length}</span>
-          </div>
-          <div className="result-list">
-            {section.results.map((result) => (
-              <ResultCard
-                key={`${section.key}-${result.id}`}
-                result={result}
-                copied={copiedId === `${section.key}-${result.id}`}
-                onCopy={(identifier) => onCopy(identifier, `${section.key}-${result.id}`)}
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      <div className="result-list">
+        {data.sections.flatMap((section) =>
+          section.results.map((result) => (
+            <ResultCard
+              key={`${section.key}-${result.id}`}
+              result={result}
+              sectionTitle={section.title}
+              copied={copiedId === `${section.key}-${result.id}`}
+              onCopy={(identifier) => onCopy(identifier, `${section.key}-${result.id}`)}
+            />
+          )),
+        )}
+      </div>
     </>
   );
 }
 
 function ResponseContext({ response }: { response: SearchResponse }) {
+  const interpretation = response.interpretation.interpretedAs;
+
   return (
-    <>
+    <div className="response-context">
       <div className="interpretation" aria-label="Search interpretation">
-        <Pill label="Intent" value={readable(response.interpretation.intent)} />
-        <Pill label="Confidence" value={readable(response.interpretation.confidence)} />
-        <Pill label="Interpreted as" value={response.interpretation.interpretedAs} />
-        {response.interpretation.extracted.identifier ? (
-          <Pill label="Identifier" value={response.interpretation.extracted.identifier} />
-        ) : null}
-        {response.interpretation.extracted.version ? (
-          <Pill label="Version" value={response.interpretation.extracted.version} />
-        ) : null}
-        {response.interpretation.extracted.weakness ? (
-          <Pill label="Weakness" value={response.interpretation.extracted.weakness} />
-        ) : null}
+        <span>
+          Interpreted as <strong>{interpretation}</strong>
+        </span>
+        {response.selectedTarget ? <TargetSummary target={response.selectedTarget} /> : null}
       </div>
 
       {response.caveats.length ? (
@@ -466,59 +363,26 @@ function ResponseContext({ response }: { response: SearchResponse }) {
           ))}
         </div>
       ) : null}
-
-      {response.selectedTarget ? (
-        <TargetCard
-          target={response.selectedTarget}
-          alternates={response.alternateTargets}
-        />
-      ) : null}
-    </>
-  );
-}
-
-function Pill({ label, value }: { label: string; value: string }) {
-  return (
-    <span className="pill">
-      {label} <strong>{value}</strong>
-    </span>
-  );
-}
-
-function TargetCard({
-  target,
-  alternates,
-}: {
-  target: TargetCandidate;
-  alternates: TargetCandidate[];
-}) {
-  const alternateText =
-    alternates.length > 0
-      ? `${alternates.length} alternate target${alternates.length === 1 ? "" : "s"} found`
-      : "No alternate targets";
-
-  return (
-    <div className="target-card">
-      <div className="target-row">
-        <div>
-          <div className="target-type">
-            {target.type} matched by {target.matchedBy}
-          </div>
-          <p className="target-label">{target.label}</p>
-          <p className="target-subtitle">{target.subtitle ?? alternateText}</p>
-        </div>
-        <span className="confidence">{readable(target.confidence)}</span>
-      </div>
     </div>
+  );
+}
+
+function TargetSummary({ target }: { target: TargetCandidate }) {
+  return (
+    <span>
+      Matched {target.type} <strong>{target.label}</strong>
+    </span>
   );
 }
 
 function ResultCard({
   result,
+  sectionTitle,
   copied,
   onCopy,
 }: {
   result: VulnerabilityResult;
+  sectionTitle: string;
   copied: boolean;
   onCopy: (identifier: string) => void;
 }) {
@@ -535,8 +399,8 @@ function ResultCard({
       : "No EPSS";
   const epssPercentile =
     typeof result.exploitSignals.epssPercentile === "number"
-      ? `${Math.round(result.exploitSignals.epssPercentile * 100)}th`
-      : "No percentile";
+      ? `${Math.round(result.exploitSignals.epssPercentile * 100)}th percentile`
+      : null;
   const products = result.affectedSoftware.products.map((product) =>
     [product.vendor, product.name].filter(Boolean).join(" "),
   );
@@ -544,13 +408,15 @@ function ResultCard({
     (pkg) => `${pkg.ecosystem}:${pkg.name}`,
   );
   const fixedVersions = result.affectedSoftware.fixedVersions.map(
-    (version) => `fixed ${version}`,
+    (version) => `Fixed ${version}`,
   );
+  const evidenceTags = [...result.evidence.sources, ...fixedVersions];
 
   return (
     <article className="result-card">
       <div className="result-title-row">
         <div className="identifier-group">
+          <span className="section-label">{sectionTitle}</span>
           <span className="identifier">{identifier}</span>
           <h3>{result.title ?? result.summary ?? "Untitled vulnerability record"}</h3>
         </div>
@@ -572,28 +438,32 @@ function ResultCard({
           severityTone={severityTone}
         />
         <Metric
-          label="Known exploited"
-          value={result.exploitSignals.knownExploited ? "Yes, via KEV" : "No KEV signal"}
+          label="KEV"
+          value={result.exploitSignals.knownExploited ? "Known exploited" : "No signal"}
         />
-        <Metric label="EPSS" value={`${epssScore} | ${epssPercentile}`} />
+        <Metric
+          label="EPSS"
+          value={epssPercentile ? `${epssScore}, ${epssPercentile}` : epssScore}
+        />
         <Metric
           label="Evidence"
-          value={`${result.evidence.sourceRecordCount} records | ${result.evidence.referenceCount} refs`}
+          value={`${result.evidence.sourceRecordCount} records, ${result.evidence.referenceCount} refs`}
         />
       </div>
 
       <div className="software-grid">
-        <TagBlock title="Affected products" values={products} />
-        <TagBlock title="Affected packages" values={packages} />
+        <TagBlock title="Products" values={products} />
+        <TagBlock title="Packages" values={packages} />
       </div>
 
-      <div className="evidence-block">
-        <h4>Evidence and fixes</h4>
-        <div className="tag-list">
-          <Tags values={result.evidence.sources} emptyLabel="No source names returned" />
-          <Tags values={fixedVersions} emptyLabel="No fixed versions returned" />
+      {evidenceTags.length ? (
+        <div className="evidence-block">
+          <h4>Sources and fixes</h4>
+          <div className="tag-list">
+            <Tags values={evidenceTags} />
+          </div>
         </div>
-      </div>
+      ) : null}
     </article>
   );
 }
@@ -618,32 +488,23 @@ function Metric({
 }
 
 function TagBlock({ title, values }: { title: string; values: string[] }) {
+  const normalized = values.filter(Boolean);
+  if (!normalized.length) {
+    return null;
+  }
+
   return (
     <div className="software-block">
       <h4>{title}</h4>
       <div className="tag-list">
-        <Tags values={values} emptyLabel="No source-backed rows returned" />
+        <Tags values={normalized} />
       </div>
     </div>
   );
 }
 
-function Tags({
-  values,
-  emptyLabel,
-}: {
-  values: string[];
-  emptyLabel: string;
-}) {
+function Tags({ values }: { values: string[] }) {
   const normalized = values.filter(Boolean);
-  if (!normalized.length) {
-    return (
-      <span className="tag" data-muted="true">
-        {emptyLabel}
-      </span>
-    );
-  }
-
   const visible = normalized.slice(0, 5);
   const remaining = normalized.length - visible.length;
 
@@ -674,26 +535,29 @@ function LoadingState() {
   );
 }
 
-function EmptyState({
-  kicker,
-  title,
-  body,
-}: {
-  kicker: string;
-  title: string;
-  body: string;
-}) {
+function EmptyState() {
   return (
     <div className="empty-state">
-      <p className="empty-kicker">{kicker}</p>
-      <h3>{title}</h3>
-      <p>{body}</p>
+      <h3>No vulnerability records matched this query.</h3>
+      <p>Try a CVE, GHSA, package URL, ecosystem package, product, or CWE.</p>
     </div>
   );
 }
 
-function readable(value: string) {
-  return value.replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+function resultsHeading(
+  state: SearchState,
+  resultCount: number,
+  displayedQuery: string,
+) {
+  if (state.status === "loading") {
+    return `Searching "${displayedQuery}"`;
+  }
+
+  if (resultCount === 0) {
+    return `No results for "${displayedQuery}"`;
+  }
+
+  return `${resultCount} result${resultCount === 1 ? "" : "s"} for "${displayedQuery}"`;
 }
 
 async function checkHealth(setApiState: (state: ApiState) => void) {
