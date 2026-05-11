@@ -332,32 +332,20 @@ main.has-results .hero-text {
 }
 
 .search-panel {
-  padding: var(--space-3);
-  border: 1px solid color-mix(in oklch, var(--divider-strong) 76%, var(--accent-soft));
-  border-radius: var(--radius-md);
-  background:
-    linear-gradient(180deg, color-mix(in oklch, var(--surface-raised) 88%, var(--accent-soft)), var(--surface-panel));
-  box-shadow:
-    0 28px 80px color-mix(in oklch, var(--surface-page-deep) 78%, transparent),
-    inset 0 1px 0 color-mix(in oklch, var(--ink) 9%, transparent);
-}
-
-.search-panel label {
-  display: block;
-  color: var(--ink);
-  font-size: 0.92rem;
-  font-weight: 750;
-  text-align: left;
+  width: 100%;
 }
 
 .query-control {
   display: grid;
-  min-height: 86px;
-  margin-top: var(--space-3);
+  min-height: 88px;
   padding: 0.5rem;
   border: 1px solid var(--divider-strong);
   border-radius: var(--radius-md);
-  background: color-mix(in oklch, var(--surface-page-deep) 70%, var(--surface-panel));
+  background:
+    linear-gradient(180deg, color-mix(in oklch, var(--surface-raised) 88%, var(--accent-soft)), color-mix(in oklch, var(--surface-page-deep) 68%, var(--surface-panel)));
+  box-shadow:
+    0 28px 80px color-mix(in oklch, var(--surface-page-deep) 78%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--ink) 9%, transparent);
   transition:
     border-color 180ms ease,
     box-shadow 180ms ease,
@@ -367,7 +355,10 @@ main.has-results .hero-text {
 .query-control:focus-within {
   border-color: var(--accent);
   background: color-mix(in oklch, var(--surface-page-deep) 52%, var(--surface-panel));
-  box-shadow: 0 0 0 3px color-mix(in oklch, var(--accent) 22%, transparent);
+  box-shadow:
+    0 30px 90px color-mix(in oklch, var(--surface-page-deep) 82%, transparent),
+    0 0 0 3px color-mix(in oklch, var(--accent) 22%, transparent),
+    inset 0 1px 0 color-mix(in oklch, var(--ink) 9%, transparent);
 }
 
 .query-control input {
@@ -823,10 +814,6 @@ kbd {
 
   .brand-name {
     max-width: 11rem;
-  }
-
-  .search-panel {
-    padding: var(--space-3);
   }
 
   h1 {

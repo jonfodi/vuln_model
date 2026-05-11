@@ -177,7 +177,9 @@ export function SearchClient() {
 
           <form className="search-form" onSubmit={onSubmit} role="search">
             <div className="search-panel">
-              <label htmlFor="query">Investigate a package, product, version, or advisory</label>
+              <label className="visually-hidden" htmlFor="query">
+                Investigate a package, product, version, or advisory
+              </label>
               <div className="query-control">
                 <input
                   ref={inputRef}
