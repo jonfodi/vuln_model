@@ -15,16 +15,6 @@ type SearchState =
 
 type ApiState = "checking" | "ready" | "offline";
 
-const SAMPLE_QUERIES = [
-  "Log4Shell",
-  "Next.js",
-  "chrome known exploited",
-  "log4j 2.14.1",
-  "npm:next",
-];
-
-const SOURCE_NAMES = ["OSV", "CVE List", "CISA KEV", "FIRST EPSS"];
-
 export function SearchClient() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState("");
@@ -196,45 +186,16 @@ export function SearchClient() {
                   type="search"
                   value={query}
                   onChange={(event) => setQuery(event.target.value)}
-                  placeholder="Try Log4Shell, Next.js, chrome known exploited, npm:next"
+                  placeholder="Log4Shell, Next.js, Chrome known exploited, npm:next"
                   autoComplete="off"
                   spellCheck={false}
-                  aria-describedby="source-strip"
                 />
-                <button
-                  className="primary-action"
-                  type="submit"
-                  disabled={state.status === "loading"}
-                >
-                  {state.status === "loading" ? "Analyzing" : "Analyze"}
+                <button className="visually-hidden" type="submit">
+                  Search
                 </button>
-              </div>
-              <div id="source-strip" className="source-strip" aria-label="Evidence sources">
-                <span>Signals from</span>
-                {SOURCE_NAMES.map((source) => (
-                  <span className="source-pill" key={source}>
-                    {source}
-                  </span>
-                ))}
               </div>
             </div>
           </form>
-
-          {!hasSearched ? (
-            <div className="example-bar" aria-label="Example searches">
-              <span className="example-label">Quick starts</span>
-              {SAMPLE_QUERIES.map((sample) => (
-                <button
-                  className="query-chip"
-                  key={sample}
-                  type="button"
-                  onClick={() => void submitSearch(sample)}
-                >
-                  {sample}
-                </button>
-              ))}
-            </div>
-          ) : null}
         </section>
 
         {hasSearched ? (
