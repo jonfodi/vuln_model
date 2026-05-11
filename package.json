@@ -11,7 +11,9 @@
     "db:studio": "drizzle-kit studio",
     "ingest": "bun src/ingest/cli.ts",
     "ingest:seed": "bun src/ingest/cli.ts seed",
-    "ingest:cve": "bun src/ingest/cli.ts cve"
+    "ingest:cve": "bun src/ingest/cli.ts cve",
+    "api:start": "bun src/api/server.ts",
+    "api:dev": "bun --hot src/api/server.ts"
   },
   "dependencies": {
     "drizzle-orm": "latest",

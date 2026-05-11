@@ -314,6 +314,29 @@ Typecheck:
 bun run typecheck
 ```
 
+Start the API:
+
+```bash
+bun run api:dev
+```
+
+Bun handles `--port`, `BUN_PORT`, `PORT`, and `NODE_PORT` when the server does
+not set an explicit port. The API exposes:
+
+```bash
+GET /health
+POST /api/search
+GET /api/search?q=log4j
+```
+
+Example search request:
+
+```bash
+curl -s http://localhost:3000/api/search \
+  -H 'content-type: application/json' \
+  -d '{"query":"log4j 2.14.1","limit":10}'
+```
+
 Run the first local ingestion slice:
 
 ```bash
