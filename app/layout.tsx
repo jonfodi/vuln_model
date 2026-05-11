@@ -4,7 +4,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Vulnerability Intelligence",
   description:
-    "Search affected software, fixed versions, exploitability signals, and source records behind public vulnerability facts.",
+    "Decode software risk with affected software, fixed versions, exploitability signals, and source evidence in one place.",
 };
 
 export default function RootLayout({

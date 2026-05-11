@@ -16,14 +16,14 @@ type SearchState =
 type ApiState = "checking" | "ready" | "offline";
 
 const SAMPLE_QUERIES = [
-  "CVE-2021-44228",
+  "Log4Shell",
+  "Next.js",
+  "chrome known exploited",
   "log4j 2.14.1",
   "npm:next",
-  "CWE-79",
-  "known exploited chrome",
 ];
 
-const SOURCE_NAMES = "CVE List, OSV, CISA KEV, FIRST EPSS";
+const SOURCE_NAMES = ["OSV", "CVE List", "CISA KEV", "FIRST EPSS"];
 
 export function SearchClient() {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +83,7 @@ export function SearchClient() {
     if (!trimmed) {
       setState({
         status: "error",
-        error: "Enter a CVE, package, product, CWE, or version.",
+        error: "Enter a package, product, version, advisory ID, or weakness name.",
       });
       focusSearch();
       return;
@@ -177,44 +177,52 @@ export function SearchClient() {
       <main id="main-content" className={hasSearched ? "has-results" : undefined}>
         <section className="search-hero" aria-labelledby="page-title">
           <div className="hero-copy">
-            <p className="eyebrow">Public vulnerability intelligence</p>
-            <h1 id="page-title">Search vulnerability records.</h1>
+            <p className="eyebrow">Evidence-backed vulnerability intelligence</p>
+            <h1 id="page-title">Software risk, decoded.</h1>
             <p className="hero-text">
-              Find affected software, fixed versions, exploit signals, and source
-              evidence across {SOURCE_NAMES}.
+              Search packages, products, versions, and advisories. See affected
+              software, fixes, exploitation signals, and source evidence in one view.
             </p>
           </div>
 
           <form className="search-form" onSubmit={onSubmit} role="search">
-            <label htmlFor="query">Search by CVE, package, product, CWE, or version</label>
-            <div className="query-control">
-              <input
-                ref={inputRef}
-                id="query"
-                name="query"
-                type="search"
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="CVE-2021-44228, log4j 2.14.1, npm:next, CWE-79"
-                autoComplete="off"
-                spellCheck={false}
-                aria-describedby="query-help"
-              />
-              <button
-                className="primary-action"
-                type="submit"
-                disabled={state.status === "loading"}
-              >
-                {state.status === "loading" ? "Searching" : "Search"}
-              </button>
+            <div className="search-panel">
+              <label htmlFor="query">Investigate a package, product, version, or advisory</label>
+              <div className="query-control">
+                <input
+                  ref={inputRef}
+                  id="query"
+                  name="query"
+                  type="search"
+                  value={query}
+                  onChange={(event) => setQuery(event.target.value)}
+                  placeholder="Try Log4Shell, Next.js, chrome known exploited, npm:next"
+                  autoComplete="off"
+                  spellCheck={false}
+                  aria-describedby="source-strip"
+                />
+                <button
+                  className="primary-action"
+                  type="submit"
+                  disabled={state.status === "loading"}
+                >
+                  {state.status === "loading" ? "Analyzing" : "Analyze"}
+                </button>
+              </div>
+              <div id="source-strip" className="source-strip" aria-label="Evidence sources">
+                <span>Signals from</span>
+                {SOURCE_NAMES.map((source) => (
+                  <span className="source-pill" key={source}>
+                    {source}
+                  </span>
+                ))}
+              </div>
             </div>
-            <p id="query-help" className="field-note">
-              Public records only. Environment-specific exposure requires asset context.
-            </p>
           </form>
 
           {!hasSearched ? (
             <div className="example-bar" aria-label="Example searches">
+              <span className="example-label">Quick starts</span>
               {SAMPLE_QUERIES.map((sample) => (
                 <button
                   className="query-chip"
@@ -354,15 +362,6 @@ function ResponseContext({ response }: { response: SearchResponse }) {
         {response.selectedTarget ? <TargetSummary target={response.selectedTarget} /> : null}
       </div>
 
-      {response.caveats.length ? (
-        <div className="caveats" aria-label="Search caveats">
-          {response.caveats.map((caveat) => (
-            <div className="caveat" key={caveat}>
-              {caveat}
-            </div>
-          ))}
-        </div>
-      ) : null}
     </div>
   );
 }
@@ -538,8 +537,8 @@ function LoadingState() {
 function EmptyState() {
   return (
     <div className="empty-state">
-      <h3>No vulnerability records matched this query.</h3>
-      <p>Try a CVE, GHSA, package URL, ecosystem package, product, or CWE.</p>
+      <h3>No matches for this query.</h3>
+      <p>Try a package, product, version, advisory ID, or weakness name.</p>
     </div>
   );
 }
